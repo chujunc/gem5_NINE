@@ -111,7 +111,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Exclusive_Data,  desc="Received a data message";
 
     Writeback_Ack,   desc="Writeback O.K. from directory";
-    Writeback_Ack_Data,   desc="Writeback O.K. from directory";
+    Writeback_Ack_Data,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 requesting data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
 
     // Triggers

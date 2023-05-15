@@ -78,7 +78,7 @@ machine(MachineType:L2Cache, "Token protocol")
     OLS, AccessPermission:Read_Only, desc="Owned with local sharers";
     OLSX, AccessPermission:Read_Only, desc="Owned with local sharers, chip is exclusive";
     SLS, AccessPermission:Read_Only, desc="Shared with local sharers";
-    M, AccessPermission:Read_Write, desc="Modified";
+    M, AccessPermission:Read_Write, desc="Modified";  //exclusive in inter chip
 
     // Transient States
 
@@ -174,7 +174,7 @@ machine(MachineType:L2Cache, "Token protocol")
     L1_WBCLEANDATA,       desc="Writeback from L1, with data";
     L1_WBDIRTYDATA,       desc="Writeback from L1, with data";
 
-    Writeback_Ack,   desc="Writeback O.K. from directory";
+    Writeback_Ack,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 indicating to drop data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
 
     Unblock,         desc="Local L1 is telling L2 dir to unblock";
@@ -1935,12 +1935,12 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition({IGM, IGS}, Inv) {
     t_recordFwdXID;
-    e_sendAck;
+    e_sendAck;   //desc="ACKnowledgment, responder doesn't have a copy";
     m_popRequestQueue;
   }
 
   transition(I, Inv) {
-    i_allocateTBE;
+    i_allocateTBE;    // what use?
     t_recordFwdXID;
     e_sendAck;
     s_deallocateTBE;
@@ -1950,15 +1950,15 @@ machine(MachineType:L2Cache, "Token protocol")
   // NEED INV for S state
 
   transition({ILS, ILO, ILX}, Inv, II) {
-    i_allocateTBE;
+    i_allocateTBE;    // II means "blocked, handling invalidations", inv to local l1s.
     t_recordFwdXID;
     ee_sendLocalInv;
     gg_clearLocalSharers;
-    removeFromDir;
+    removeFromDir;   // localDirectory.deallocate(address);
     m_popRequestQueue;
   }
 
-  transition(SLS, Inv, II) {
+  transition(SLS, Inv, II) {  // why not do gg_clearLocalSharers and removeFromDir? Because these l1s are recorded in l2, don't need clear the local_dir
     i_allocateTBE;
     t_recordFwdXID;
     ee_sendLocalInv;
@@ -2406,7 +2406,7 @@ machine(MachineType:L2Cache, "Token protocol")
     a_issueGETX;
     // count number of INVs needed that doesn't include requestor
     h_countLocalSharersExceptRequestor;
-    // issue INVs to everyone except requestor
+    // issue INVs to everyone except requestor, send inv when get data
     y_copyCacheStateToDir;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
