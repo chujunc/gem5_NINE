@@ -38,8 +38,9 @@ class CoherenceProtocol(Enum):
     GARNET_STANDALONE = 4
     MESI_TWO_LEVEL = 5
     MOESI_CMP_DIRECTORY = 6
-    MOESI_CMP_TOKEN = 7
-    MOESI_AMD_BASE = 8
-    MI_EXAMPLE = 9
-    GPU_VIPER = 10
-    CHI = 11
+    MOESI_NINE = 7
+    MOESI_CMP_TOKEN = 8
+    MOESI_AMD_BASE = 9
+    MI_EXAMPLE = 10
+    GPU_VIPER = 11
+    CHI = 12

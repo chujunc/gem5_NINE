@@ -1079,7 +1079,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(MM, Fwd_GETS, I) {
+  transition(MM, Fwd_GETS, I) {   //why not to O or S?
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
