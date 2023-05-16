@@ -574,12 +574,31 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     }
   }
 
-  action(e_sendDataToL2, "e2", desc="Send data from cache to l2 for sharing") {  //cjc_update3
+  action(e_sendDataToL1, "e1", desc="Send data from cache to l2 for sharing") {  //cjc_update3
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
         enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA;
+          out_msg.Sender := machineID;
+          out_msg.SenderMachine := MachineType:L1Cache;
+          out_msg.Destination.add(in_msg.Requestor);
+          out_msg.DataBlk := cache_entry.DataBlk;
+          // out_msg.Dirty := cache_entry.Dirty;
+          out_msg.Dirty := false;
+          out_msg.Acks := in_msg.Acks;
+          out_msg.MessageSize := MessageSizeType:Response_Data;
+        }
+        DPRINTF(RubySlicc, "Sending data to L1: %#x\n", in_msg.addr);
+    }
+  }
+
+  action(e_sendDataToL2, "e2", desc="Send data from cache to l2 for sharing") {  //cjc_update3
+    peek(requestNetwork_in, RequestMsg) {
+      assert(is_valid(cache_entry));
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
+          out_msg.addr := address;
+          out_msg.Type := CoherenceResponseType:DATAToL2;
           out_msg.Sender := machineID;
           out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
@@ -1043,7 +1062,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(S, Fwd_GETS) {  //cjc_update3
-    e_sendData;
+    e_sendDataToL1;
     e_sendDataToL2;
     l_popForwardQueue;
   }
@@ -1075,9 +1094,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS, S) {  //cjc_update3
+  transition(O, Fwd_GETS/*, S*/) {  //cjc_update3
+    //e_sendDataToL1;
+    //e_sendDataToL2;
     e_sendData;
-    e_sendDataToL2;
     l_popForwardQueue;
   }
 
