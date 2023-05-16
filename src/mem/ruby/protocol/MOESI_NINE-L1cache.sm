@@ -1094,10 +1094,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS/*, S*/) {  //cjc_update3
-    //e_sendDataToL1;
-    //e_sendDataToL2;
-    e_sendData;
+  transition(O, Fwd_GETS, S) {  //cjc_update3
+    e_sendDataToL1;
+    e_sendDataToL2;
+    //e_sendData;
     l_popForwardQueue;
   }
 
