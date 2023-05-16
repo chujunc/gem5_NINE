@@ -1654,7 +1654,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   // must happened because we forwarded GETX to local exclusive trying to do wb
-  transition({M, O, ILS, ILOX, OLS, OLSX, SLS, S}, L1_PUTX) {
+  transition({M, O, ILS, ILOX, OLS, OLSX, SLS, S}, L1_PUTX) {  //l1_putX is initialled by l1_replacement
     ll_writebackNack;
     o_popL1RequestQueue;
   }
@@ -1672,7 +1672,7 @@ machine(MachineType:L2Cache, "Token protocol")
 // happened if we forwarded GETS to exclusive who tried to do writeback
 //  ?? should we just Nack these instead?  Could be a bugs here
   transition(ILO, L1_PUTX, ILOW) {
-     l_writebackAckNeedData;
+     l_writebackAckNeedData;   //Send writeback ack to L1 requesting data
      o_popL1RequestQueue;
   }
 
@@ -1910,7 +1910,7 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     t_recordFwdXID;
     ee_sendLocalInv;
-    gg_clearLocalSharers;
+    gg_clearLocalSharers;  //removeAllLocalSharersFromDir(cache_entry, address)
     checkCacheNoSharersNoOwner;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
