@@ -338,7 +338,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK) {
           trigger(Event:Writeback_Ack, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceResponseType:WB_ACK_SU) {  //cjc_update
+        } else if (in_msg.Type == CoherenceResponseType:WB_ACK_SU) {  //cjc_update2
           trigger(Event:Writeback_Ack_SU, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK_DATA) {
@@ -1007,7 +1007,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     k_popMandatoryQueue;
   }
 
-  transition(S, L1_Replacement, SI) {   //cjc_update: whether drop silent, don't send message to l2cache? can't, need notice l2 to update local_dir, but we can
+  transition(S, L1_Replacement, SI) {   //cjc_update2: whether drop silent, don't send message to l2cache? can't, need notice l2 to update local_dir, but we can
     //straightly update local_dir instead of waiting an ack between l1 and l2.  SI
     i_allocateTBE;
     dd_issuePUTS;
@@ -1301,7 +1301,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition({SI, OI, MI}, Writeback_Ack_SU, I) {  //cjc_update
+  transition({SI, OI, MI}, Writeback_Ack_SU, I) {  //cjc_update2
     s_deallocateTBE;
     n_popResponseQueue;
   }

@@ -1395,7 +1395,7 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
-  action(l_writebackAckDropDataAndSharerUpdated, "\lu", desc="Send writeback ack to L1 indicating to drop data, local dir already update") {
+  action(l_writebackAckDropDataAndSharerUpdated, "\lu", desc="Send writeback ack to L1 indicating to drop data, local dir already update") { //cjc_update2
     peek(L1requestNetwork_in, RequestMsg) {
       enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
         out_msg.addr := in_msg.addr;
@@ -2568,7 +2568,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
 
   // hmmm...keep data or drop.  Just drop for now
-  transition(ILOS, L1_PUTS_only, ILO) {  //cjc_update
+  transition(ILOS, L1_PUTS_only, ILO) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -2586,7 +2586,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(ILOSX, L1_PUTS_only, ILOX) {  //cjc_update
+  transition(ILOSX, L1_PUTS_only, ILOX) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -2599,13 +2599,13 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   // hmmm...keep data or drop.  Just drop for now
-  transition(ILOS, L1_PUTS, ILOS) {    //cjc_update: dont't send wb_ack to l1, just clear sharer list
+  transition(ILOS, L1_PUTS, ILOS) {    //cjc_update2: dont't send wb_ack to l1, just clear sharer list
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
-  transition(ILOSX, L1_PUTS, ILOSX) {  //cjc_update
+  transition(ILOSX, L1_PUTS, ILOSX) {  //cjc_update2
     //l_writebackAckDropData;
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
@@ -2624,13 +2624,13 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(SLS, L1_PUTS, SLS) {  //cjc_update
+  transition(SLS, L1_PUTS, SLS) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
-  transition(SLS, L1_PUTS_only, S) {  //cjc_update
+  transition(SLS, L1_PUTS_only, S) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -2642,7 +2642,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(OLS, L1_PUTS, OLS) {  //cjc_update
+  transition(OLS, L1_PUTS, OLS) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -2658,19 +2658,19 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-   transition(OLS, L1_PUTS_only, O) {  //cjc_update
+   transition(OLS, L1_PUTS_only, O) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
-  transition(OLSX, L1_PUTS_only, M) {  //cjc_update
+  transition(OLSX, L1_PUTS_only, M) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
-  transition(OLSX, L1_PUTS, OLSX) {  //cjc_update
+  transition(OLSX, L1_PUTS, OLSX) {  //cjc_update2
     gg_clearSharerFromL1Request;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
