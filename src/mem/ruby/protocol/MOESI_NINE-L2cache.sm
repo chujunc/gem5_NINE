@@ -105,6 +105,7 @@ machine(MachineType:L2Cache, "Token protocol")
     OXW, AccessPermission:Read_Only, desc="local WB request from only sharer, was OLSX";
     OLSXW, AccessPermission:Read_Only, desc="local WB request from sharer, was OLSX";
 
+    IFLS, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer";
     IFLS_DU, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer, wait for data and unblock";  //cjc_update3
     IFLS_U, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer, wait for unblock";  
     IFLS_D, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer, wait for data";  
@@ -1650,19 +1651,19 @@ machine(MachineType:L2Cache, "Token protocol")
   // TRANSITIONS
   //*****************************************************
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTO, L1_PUTS, L1_PUTS_only, L1_PUTX}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTO, L1_PUTS, L1_PUTS_only, L1_PUTX}) {
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_GETX, L1_GETS}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_GETX, L1_GETS}) {
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L2_Replacement) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L2_Replacement) {
     zz_recycleL1RequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Fwd_GETX, Fwd_GETS, Fwd_DMA}) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, IGS, IGM, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Fwd_GETX, Fwd_GETS, Fwd_DMA}) {
     zz_recycleGlobalRequestQueue;
   }
 
@@ -1670,7 +1671,7 @@ machine(MachineType:L2Cache, "Token protocol")
     zz_recycleGlobalRequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Inv}) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLS_DU, IFLS_D, IFLS_U, IFLO, IFLO_DU, IFLO_D, IFLO_U, IFLOX, IFLOX_DU, IFLOX_D, IFLOX_U, IFLOXX, IFLOSX, IFLOSX_DU, IFLOSX_D, IFLOSX_U, OLSXS, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Inv}) {
     zz_recycleGlobalRequestQueue;
   }
 
@@ -2073,42 +2074,42 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_GETS, IFLS_DU) {   //cjc_update3
+  transition(ILS, L1_GETS, IFLS) {
     k_forwardLocalGETSToLocalSharer;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(IFLS_DU, L1_WBDIRTYDATA, IFLS_U) {
+  transition({ILS,IFLS}, L1_WBDIRTYDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeDirtyDataToCache;
     o_popL1RequestQueue;
-    //wa_wakeUpDependents;
+    wa_wakeUpDependents;
   }
 
   // clean writeback
-  transition(IFLS_DU, L1_WBCLEANDATA, IFLS_U) {
+  transition({ILS,IFLS}, L1_WBCLEANDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
-    //wa_wakeUpDependents;
+    wa_wakeUpDependents;
   }
 
-  transition(IFLS_U, Unblock, SLS) {  //cjc_update3
+  transition(SLS, Unblock, SLS) {  //cjc_update3
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
-  transition(IFLS_DU, Unblock, IFLS_D) {  //cjc_update3
+  transition(IFLS, Unblock, ILS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
+    wa_wakeUpDependents;
   }
 
-  transition(IFLS_D, L1_WBDIRTYDATA, SLS) {  //cjc_update3
+  /* transition(IFLS_D, L1_WBDIRTYDATA, SLS) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeDirtyDataToCache;  //new add
@@ -2123,30 +2124,38 @@ machine(MachineType:L2Cache, "Token protocol")
     u_writeCleanDataToCache;
     o_popL1RequestQueue
     wa_wakeUpDependents;
-  }
+  } */
   
   // /*
-  transition(ILOX, L1_GETS, IFLOX_DU) {   //cjc_update3
+  transition(ILOX, L1_GETS, IFLOX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
-  } 
+  }
 
-  transition(IFLOX_DU, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
+  transition({IFLOX,ILOSX}, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove; 
     gg_clearOwnerFromL1Request; 
     u_writeDirtyDataToCache; 
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
 
-  transition(IFLOX_DU, L1_WBCLEANDATA, OLSX) {  //cjc_update3
+  transition({IFLOX,ILOSX}, L1_WBCLEANDATA, OLSX) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;  
     gg_clearOwnerFromL1Request;
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
+
+  transition(IFLOX, Unblock, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
 
   transition(OLSX, Unblock) {
     g_recordLocalSharer;
@@ -2154,132 +2163,71 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(IFLOX_DU, Unblock, IFLOX_DU) {  //cjc_update3
-    g_recordLocalSharer;
-    n_popResponseQueue;
-  }
-
-  transition(IFLOX_DU, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  //new
-    u_writeDirtyDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  } 
-
-  transition(IFLOX_DU, L1_WBCLEANDATA, OLSX) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  //new
-    u_writeCleanDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  } 
-
-  transition(ILOSX, L1_GETS, IFLOSX_DU) {
+  transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(IFLOSX_DU, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
+  transition(IFLOSX, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
     u_writeDirtyDataToCache; 
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
 
-  transition(IFLOSX_DU, L1_WBCLEANDATA, OLSX) {  //cjc_update3
+  transition(IFLOSX, L1_WBCLEANDATA, OLSX) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
 
-  transition(IFLOSX_U, Unblock, OLSX) {
+  transition(IFLOSX, Unblock, ILOSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
-  transition(IFLOSX_DU, Unblock, IFLOSX_DU) {  //cjc_update3
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    //wa_wakeUpDependents;
-  }
-
-  transition(IFLOSX_DU, L1_WBDIRTYDATA, OLSX) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  
-    u_writeDirtyDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  } 
-
-  transition(IFLOSX_DU, L1_WBCLEANDATA, OLSX) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  
-    u_writeCleanDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  } 
-
-  transition({ILOS, ILO}, L1_GETS, IFLO_DU) {
+  transition({ILOS, ILO}, L1_GETS, IFLO) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
-  transition(IFLO_DU, L1_WBDIRTYDATA, OLS) {  //cjc_update3
+  transition({IFLO,ILOS}, L1_WBDIRTYDATA, OLS) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
     u_writeDirtyDataToCache; 
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
 
-  transition(IFLO_DU, L1_WBCLEANDATA, OLS) {  //cjc_update3
+  transition({IFLO,ILOS}, L1_WBCLEANDATA, OLS) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
+    wa_wakeUpDependents;
   } 
 
-  transition(IFLO_U, Unblock, OLS) {
+  transition(OLS, Unblock) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
-  transition(IFLO_DU, Unblock, IFLO_DU) {  //cjc_update3
+  transition(IFLO, Unblock, ILOS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
+    wa_wakeUpDependents;
   }
-
-  transition(IFLO_DU, L1_WBDIRTYDATA, OLS) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  
-    u_writeDirtyDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  } 
-
-  transition(IFLO_DU, L1_WBCLEANDATA, OLS) {  //cjc_update3
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;  
-    u_writeCleanDataToCache; 
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }  
   // */
 
   /* // original begin
@@ -2318,14 +2266,7 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-  */ // original end
-
-
-  transition(IFLOX, Unblock, ILOSX) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  } 
+  */ // original end 
 
 
   transition(IFLOXX, Unblock, ILOSX) {
