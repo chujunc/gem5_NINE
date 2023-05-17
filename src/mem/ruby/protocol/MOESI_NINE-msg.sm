@@ -63,13 +63,13 @@ enumeration(CoherenceRequestType, desc="...") {
 enumeration(CoherenceResponseType, desc="...") {
   ACK,               desc="ACKnowledgment, responder doesn't have a copy";
   DATA,              desc="Data";
-  DATAToL2,          desc="Data to l2";
+  DATAToL2,          desc="Data to l2";   //cjc_update3
   DATA_EXCLUSIVE,    desc="Data, no processor has a copy";
   UNBLOCK,           desc="Unblock";
   UNBLOCK_EXCLUSIVE, desc="Unblock, we're in E/M";
   WB_ACK,            desc="Writeback ack";
   WB_ACK_DATA,       desc="Writeback ack";
-  WB_ACK_SU,         desc="Writeback ack, Sharerlist updated"; //cjc_update
+  WB_ACK_SU,         desc="Writeback ack, Sharerlist updated"; //cjc_update2
   WB_NACK,           desc="Writeback neg. ack";
   DMA_ACK,           desc="Ack that a DMA write completed";
 }
