@@ -2183,15 +2183,34 @@ machine(MachineType:L2Cache, "Token protocol")
     u_writeCleanDataToCacheForShare;
     n_popResponseQueue;
     wa_wakeUpDependents;
+<<<<<<< HEAD
+=======
+  } */
+  transition(IFLS_DU, L1_WBDIRTYDATA, IFLS_U) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeDirtyDataToCache;
+    o_popL1RequestQueue;
+    //wa_wakeUpDependents;
   }
 
-  transition(IFLS_DU, L1_WBCLEANDATAtoL2, IFLS_U) {  //cjc_update3
+  // clean writeback
+  transition(IFLS_DU, L1_WBCLEANDATA, IFLS_U) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue;
+    //wa_wakeUpDependents;
+>>>>>>> NINE_v3_backup
+  }
+
+  /* transition(IFLS_DU, L1_WBCLEANDATAtoL2, IFLS_U) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeCleanDataToCacheForShare;  //new add
     //gg_clearSharerFromL1Request;
     n_popResponseQueue;
-  }
+  } */
 
   transition(IFLS_U, Unblock, SLS) {  //cjc_update3
     g_recordLocalSharer;
@@ -2205,14 +2224,23 @@ machine(MachineType:L2Cache, "Token protocol")
     //wa_wakeUpDependents;
   }
 
-  transition(IFLS_D, L1_WBCLEANDATAtoL2, SLS) {  //cjc_update3
+  transition(IFLS_D, L1_WBDIRTYDATA, SLS) {  //cjc_update3
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
-    u_writeCleanDataToCacheForShare;  //new add
+    u_writeDirtyDataToCache;  //new add
     //gg_clearSharerFromL1Request;
-    n_popResponseQueue;
+    o_popL1RequestQueue;
     wa_wakeUpDependents;
   }
+
+  transition(IFLS_D, L1_WBCLEANDATA, SLS) {  //cjc_update3
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue
+    wa_wakeUpDependents;
+  }
+
 
   transition(IFLOXX, Unblock, ILOSX) {
     g_recordLocalSharer;
