@@ -87,6 +87,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     OM, AccessPermission:Read_Only, "SM", desc="Issued GetX, received data";
     SI, AccessPermission:Read_Only, "OI", desc="Issued PutS, waiting for ack";
     OI, AccessPermission:Read_Only, "OI", desc="Issued PutO, waiting for ack";
+    OS, AccessPermission:Read_Only, "OS", desc="Issued PutO, waiting for ack";
     MI, AccessPermission:Read_Write, "MI", desc="Issued PutX, waiting for ack";
     II, AccessPermission:Busy, "II", desc="Issued PutX/O, saw Fwd_GETS or Fwd_GETX, waiting for ack";
   }
@@ -587,7 +588,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           // out_msg.Dirty := cache_entry.Dirty;
           out_msg.Dirty := false;
           out_msg.Acks := in_msg.Acks;
-          out_msg.MessageSize := MessageSizeType:Response_Data;
+          out_msg.MessageSize := MessageSizeType:ResponseLocal_Data;
         }
         DPRINTF(RubySlicc, "Sending data to L1: %#x\n", in_msg.addr);
     }
@@ -605,7 +606,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
                                                       MachineType:L2Cache));
           out_msg.DataBlk := cache_entry.DataBlk;
           // out_msg.Dirty := cache_entry.Dirty;
-          out_msg.Dirty := false;
+          out_msg.Dirty := cache_entry.Dirty;
           out_msg.Acks := in_msg.Acks;
           out_msg.MessageSize := MessageSizeType:Response_Data;
         }
@@ -1280,7 +1281,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(IS, Data, S) {   
+  transition(IS, Data, S) {
     u_writeDataToCache;
     m_decrementNumberOfMessages;
     hx_load_hit;
