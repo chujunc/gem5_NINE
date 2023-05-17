@@ -112,6 +112,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
     Writeback_Ack,   desc="Writeback O.K. from directory";
     Writeback_Ack_SU,     desc="Writeback O.K. from l2";  //cjc_update2
+    O_to_S,               desc="O to S";    //cjc_update3
     Writeback_Ack_Data,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 requesting data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
 
@@ -340,6 +341,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK_SU) {  //cjc_update2
           trigger(Event:Writeback_Ack_SU, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceResponseType:OtoS) {  //cjc_update3
+          trigger(Event:O_to_S, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK_DATA) {
           trigger(Event:Writeback_Ack_Data, in_msg.addr,
@@ -1093,11 +1097,15 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS, S) {  //cjc_update3
-    e_sendData;
-    //e_sendDataToL1;
+  transition(O, Fwd_GETS) {  //cjc_update3
+    //e_sendData;
+    e_sendDataToL1;
     e_sendDataToL2;
     l_popForwardQueue;
+  }
+
+  transition(O, O_to_S, S) {  //cjc_update3
+    n_popResponseQueue;
   }
 
   transition(O, Fwd_DMA) {
