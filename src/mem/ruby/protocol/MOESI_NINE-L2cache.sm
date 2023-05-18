@@ -2123,10 +2123,10 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(IFLS, Unblock, ILS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
+    wa_wakeUpDependents;
   }
   
-  /*
+  // /*
   transition(ILOX, L1_GETS, IFLOX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
@@ -2340,9 +2340,15 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
+<<<<<<< HEAD
   */ // original end 
 
   // version2 begin
+=======
+  // */
+
+  /* // original begin
+>>>>>>> parent of ed356b8... 可以run的版本，only S wb to l2
   transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
@@ -2378,6 +2384,7 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
+<<<<<<< HEAD
   //        -------------------------------------------------
   /* transition(IFLOSX, L1_PUTO, ILOSXW) {
     l_writebackAckNeedData;
@@ -2395,6 +2402,9 @@ machine(MachineType:L2Cache, "Token protocol")
   } */
 
   // version2 end 
+=======
+  */ // original end 
+>>>>>>> parent of ed356b8... 可以run的版本，only S wb to l2
 
 
   transition(IFLOXX, Unblock, ILOSX) {

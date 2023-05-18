@@ -1099,10 +1099,17 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
+<<<<<<< HEAD
   /* transition(O, Fwd_GETS) {  //cjc_update3
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
+=======
+  transition(O, Fwd_GETS) {  //cjc_update3
+    //e_sendData;
+    e_sendDataToL1;
+    e_sendDataToL2;
+>>>>>>> parent of ed356b8... 可以run的版本，only S wb to l2
     l_popForwardQueue;
   } */
 
