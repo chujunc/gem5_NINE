@@ -87,6 +87,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     OM, AccessPermission:Read_Only, "SM", desc="Issued GetX, received data";
     SI, AccessPermission:Read_Only, "OI", desc="Issued PutS, waiting for ack";
     OI, AccessPermission:Read_Only, "OI", desc="Issued PutO, waiting for ack";
+    OS, AccessPermission:Read_Only, "OS", desc="Issued PutO, waiting for ack";
     MI, AccessPermission:Read_Write, "MI", desc="Issued PutX, waiting for ack";
     II, AccessPermission:Busy, "II", desc="Issued PutX/O, saw Fwd_GETS or Fwd_GETX, waiting for ack";
   }
@@ -613,6 +614,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.DataBlk := cache_entry.DataBlk;
       out_msg.MessageSize := MessageSizeType:Writeback_Data;
     }
+    DPRINTF(RubySlicc, "Sending data to L2: %#x\n", address);
   }
 
   action(ee_sendDataExclusive, "\e", desc="Send data from cache to requestor, don't keep a shared copy") {
@@ -1097,14 +1099,25 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS) {  //cjc_update3
+  /* transition(O, Fwd_GETS) {  //cjc_update3
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
     l_popForwardQueue;
+  } */
+
+  transition(O, Fwd_GETS, OS) {
+    e_sendData;
+    i_allocateTBE;
+    dd_issuePUTO;
+    l_popForwardQueue;
+    //forward_eviction_to_cpu;
+    //kk_deallocateL1CacheBlock;
   }
 
-  transition(O, O_to_S, S) {  //cjc_update3
+  transition(OS, Writeback_Ack_Data, S) {  //cjc_update3
+    qq_sendWBDataFromTBEToL2;  // always send data
+    s_deallocateTBE;
     n_popResponseQueue;
   }
 

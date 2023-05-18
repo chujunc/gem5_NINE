@@ -1999,7 +1999,7 @@ machine(MachineType:L2Cache, "Token protocol")
     h_countLocalSharersExceptRequestor;
     // issue INVs to everyone except requestor
     ee_issueLocalInvExceptL1Requestor;
-    d_sendDataToL1GETX
+    d_sendDataToL1GETX;
     y_copyCacheStateToDir;
     r_setMRU;
     rr_deallocateL2CacheBlock;
