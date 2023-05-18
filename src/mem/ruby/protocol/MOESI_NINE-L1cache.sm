@@ -980,7 +980,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   //*****************************************************
 
   // Transitions for Load/Store/L2_Replacement from transient states
-  transition({IM, SM, OM, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
+  transition({IM, SM, OM, OS, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
     zz_recycleMandatoryQueue;
   }
 
@@ -988,7 +988,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     zz_recycleMandatoryQueue;
   }
 
-  transition({M_W, MM_W}, {Fwd_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
+  transition({M_W, MM_W, OS}, {Fwd_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
     z_recycleRequestQueue;
   }
 
@@ -1030,13 +1030,13 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({S, SM, O, OM, MM, MM_W, M, M_W}, Load) {
+  transition({S, SM, O, OS, OM, MM, MM_W, M, M_W}, Load) {
     h_load_hit;
     uu_profileDataHit;
     k_popMandatoryQueue;
   }
 
-  transition({S, SM, O, OM, MM, MM_W, M, M_W}, Ifetch) {
+  transition({S, SM, O, OS, OM, MM, MM_W, M, M_W}, Ifetch) {
     h_ifetch_hit;
     uu_profileInstHit;
     k_popMandatoryQueue;
@@ -1108,6 +1108,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition(O, Fwd_GETS, OS) {
     e_sendData;
+    //e_sendDataToL1;
+    //e_sendDataToL2;
     i_allocateTBE;
     dd_issuePUTO;
     l_popForwardQueue;
@@ -1341,7 +1343,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({SI, OI}, Fwd_GETS) {
+  transition({SI, OI}, Fwd_GETS) {  
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
   }
