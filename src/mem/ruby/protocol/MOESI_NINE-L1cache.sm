@@ -1098,9 +1098,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(O, Fwd_GETS) {  //cjc_update3
-    //e_sendData;
-    e_sendDataToL1;
-    e_sendDataToL2;
+    e_sendData;
+    //e_sendDataToL1;
+    //e_sendDataToL2;
     l_popForwardQueue;
   }
 

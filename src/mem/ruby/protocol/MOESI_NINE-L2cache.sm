@@ -2119,7 +2119,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(IFLS, Unblock, ILS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
+    //wa_wakeUpDependents;
   }
 
   /* transition(IFLS_D, L1_WBDIRTYDATA, SLS) {  //cjc_update3
@@ -2139,7 +2139,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   } */
   
-  // /*
+  /*
   transition(ILOX, L1_GETS, IFLOX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
@@ -2247,9 +2247,9 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-  // */
+  */
 
-  /* // original begin
+  // original begin
   transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
@@ -2285,7 +2285,7 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-  */ // original end 
+  // original end 
 
 
   transition(IFLOXX, Unblock, ILOSX) {
