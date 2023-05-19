@@ -49,6 +49,7 @@ enumeration(CoherenceRequestType, desc="...") {
   GETS,      desc="Get Shared";
   PUTX,      desc="Put eXclusive";
   PUTO,      desc="Put Owned";
+  PUT_DATA,  desc="O Put data";
   PUTO_SHARERS,      desc="Put Owned, but sharers exist so don't remove from sharers list";
   PUTS,      desc="Put Shared";
   INV,       desc="Invalidation";

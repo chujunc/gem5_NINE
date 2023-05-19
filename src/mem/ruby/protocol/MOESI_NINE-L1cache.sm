@@ -530,6 +530,18 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     }
   }
 
+  action(dd_issuePUTData, "\dd", desc="Issue PUTO data") {
+    enqueue(requestNetwork_out, RequestMsg, request_latency) {
+      out_msg.addr := address;
+      out_msg.Type := CoherenceRequestType:PUT_DATA;
+      out_msg.Requestor := machineID;
+      out_msg.RequestorMachine := MachineType:L1Cache;
+      out_msg.Destination.add(mapAddressToMachine(address,
+                                                  MachineType:L2Cache));
+      out_msg.MessageSize := MessageSizeType:Writeback_Control;
+    }
+  }
+
   action(dd_issuePUTS, "\ds", desc="Issue PUTS") {
     enqueue(requestNetwork_out, RequestMsg, request_latency) {
       out_msg.addr := address;
@@ -980,7 +992,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   //*****************************************************
 
   // Transitions for Load/Store/L2_Replacement from transient states
-  transition({IM, SM, OM, OS, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
+  transition({IM, SM, OM, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
     zz_recycleMandatoryQueue;
   }
 
@@ -988,7 +1000,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     zz_recycleMandatoryQueue;
   }
 
-  transition({M_W, MM_W, OS}, {Fwd_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
+  transition({M_W, MM_W}, {Fwd_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
     z_recycleRequestQueue;
   }
 
@@ -1030,13 +1042,13 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({S, SM, O, OS, OM, MM, MM_W, M, M_W}, Load) {
+  transition({S, SM, O, OM, MM, MM_W, M, M_W}, Load) {
     h_load_hit;
     uu_profileDataHit;
     k_popMandatoryQueue;
   }
 
-  transition({S, SM, O, OS, OM, MM, MM_W, M, M_W}, Ifetch) {
+  transition({S, SM, O, OM, MM, MM_W, M, M_W}, Ifetch) {
     h_ifetch_hit;
     uu_profileInstHit;
     k_popMandatoryQueue;
@@ -1065,12 +1077,28 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(S, Fwd_GETS) {  //cjc_update3
+  /* transition(S, Fwd_GETS) {  //cjc_update3
     e_sendDataToL1;
     //e_sendData;
     e_sendDataToL2;
     l_popForwardQueue;
+  } */
+  transition(S, Fwd_GETS) {
+    e_sendData;
+    //e_sendDataToL1;
+    //e_sendDataToL2;
+    i_allocateTBE;
+    dd_issuePUTData;
+    l_popForwardQueue;
+    //forward_eviction_to_cpu;
+    //kk_deallocateL1CacheBlock;
   }
+
+  transition(S, Writeback_Ack_Data) {  //cjc_update3
+    qq_sendWBDataFromTBEToL2;  // always send data
+    s_deallocateTBE;
+    n_popResponseQueue;
+  } 
 
   transition(S, Fwd_DMA) {
     e_sendData;
@@ -1099,36 +1127,29 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-<<<<<<< HEAD
-  /* transition(O, Fwd_GETS) {  //cjc_update3
+  transition(O, Fwd_GETS) {  //cjc_update3
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
-=======
-  transition(O, Fwd_GETS) {  //cjc_update3
-    //e_sendData;
-    e_sendDataToL1;
-    e_sendDataToL2;
->>>>>>> parent of ed356b8... 可以run的版本，only S wb to l2
     l_popForwardQueue;
-  } */
+  }  
 
-  transition(O, Fwd_GETS, OS) {
+  /* transition(O, Fwd_GETS) {
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
     i_allocateTBE;
-    dd_issuePUTO;
+    dd_issuePUTData;
     l_popForwardQueue;
     //forward_eviction_to_cpu;
     //kk_deallocateL1CacheBlock;
   }
 
-  transition(OS, Writeback_Ack_Data, S) {  //cjc_update3
+  transition(O, Writeback_Ack_Data, S) {  //cjc_update3
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }
+  }  */
 
   transition(O, Fwd_DMA) {
     e_sendData;
