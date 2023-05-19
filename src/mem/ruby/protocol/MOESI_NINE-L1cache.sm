@@ -113,6 +113,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
     Writeback_Ack,   desc="Writeback O.K. from directory";
     Writeback_Ack_SU,     desc="Writeback O.K. from l2";  //cjc_update2
+    Writeback_Again,      desc="Again send";
     O_to_S,               desc="O to S";    //cjc_update3
     Writeback_Ack_Data,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 requesting data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
@@ -343,8 +344,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK_SU) {  //cjc_update2
           trigger(Event:Writeback_Ack_SU, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceResponseType:OtoS) {  //cjc_update3
-          trigger(Event:O_to_S, in_msg.addr,
+        } else if (in_msg.Type == CoherenceResponseType:Again) {  //cjc_update3
+          trigger(Event:Writeback_Again, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK_DATA) {
           trigger(Event:Writeback_Ack_Data, in_msg.addr,
@@ -1062,6 +1063,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     k_popMandatoryQueue;
   }
 
+  transition({IM, SM, OM}, Writeback_Again) {
+    b_issueGETX;
+    k_popMandatoryQueue;
+  }
+
   transition(S, L1_Replacement, SI) {   //cjc_update2: whether drop silent, don't send message to l2cache? can't, need notice l2 to update local_dir, but we can
     //straightly update local_dir instead of waiting an ack between l1 and l2.  SI
     i_allocateTBE;
@@ -1094,7 +1100,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     //kk_deallocateL1CacheBlock;
   }
 
-  transition(S, Writeback_Ack_Data) {  //cjc_update3
+  transition(S, Writeback_Ack_Data) {  
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
@@ -1127,14 +1133,14 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS) {  //cjc_update3
+  /* transition(O, Fwd_GETS) {  //cjc_update3
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
     l_popForwardQueue;
-  }  
+  }    */
 
-  /* transition(O, Fwd_GETS) {
+  transition(O, Fwd_GETS, OS) {
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
@@ -1145,11 +1151,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     //kk_deallocateL1CacheBlock;
   }
 
-  transition(O, Writeback_Ack_Data, S) {  //cjc_update3
+  transition(OS, Writeback_Ack_Data, S) {  //cjc_update3
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }  */
+  }   
 
   transition(O, Fwd_DMA) {
     e_sendData;
@@ -1296,7 +1302,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition(OM, Fwd_GETS) {
     e_sendData;
     l_popForwardQueue;
-  }
+  }  
 
   transition(OM, Fwd_DMA) {
     e_sendData;

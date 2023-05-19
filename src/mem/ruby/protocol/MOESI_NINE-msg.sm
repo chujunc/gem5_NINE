@@ -65,6 +65,7 @@ enumeration(CoherenceResponseType, desc="...") {
   ACK,               desc="ACKnowledgment, responder doesn't have a copy";
   DATA,              desc="Data";
   OtoS,              desc="l2 call l1 owner to be s";   //cjc_update3
+  Again,             desc="l2 call l1 send again";
   DATA_EXCLUSIVE,    desc="Data, no processor has a copy";
   UNBLOCK,           desc="Unblock";
   UNBLOCK_EXCLUSIVE, desc="Unblock, we're in E/M";
