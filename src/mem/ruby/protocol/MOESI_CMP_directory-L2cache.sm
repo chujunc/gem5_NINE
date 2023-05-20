@@ -2553,7 +2553,6 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-
   // hmmm...keep data or drop.  Just drop for now
   transition(ILOS, L1_PUTS_only, ILOW) {
     l_writebackAckDropData;

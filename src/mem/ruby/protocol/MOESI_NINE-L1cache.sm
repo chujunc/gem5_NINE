@@ -88,6 +88,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     SI, AccessPermission:Read_Only, "OI", desc="Issued PutS, waiting for ack";
     OI, AccessPermission:Read_Only, "OI", desc="Issued PutO, waiting for ack";
     OS, AccessPermission:Read_Only, "OS", desc="Issued PutO, waiting for ack";
+    MS, AccessPermission:Read_Only, "MS", desc="Issued PutO, waiting for ack";
     MI, AccessPermission:Read_Write, "MI", desc="Issued PutX, waiting for ack";
     II, AccessPermission:Busy, "II", desc="Issued PutX/O, saw Fwd_GETS or Fwd_GETX, waiting for ack";
   }
@@ -115,6 +116,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Writeback_Ack_SU,     desc="Writeback O.K. from l2";  //cjc_update2
     Writeback_Again,      desc="Again send";
     O_to_S,               desc="O to S";    //cjc_update3
+    PUTO,                 desc="O to S";    //cjc_update3
     Writeback_Ack_Data,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 requesting data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
 
@@ -378,6 +380,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           }
         } else if (in_msg.Type == CoherenceRequestType:GETS) {
           trigger(Event:Fwd_GETS, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceRequestType:OtoS) {
+          trigger(Event:O_to_S, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceRequestType:L1PUTO) {
+          trigger(Event:PUTO, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceRequestType:DMA_READ) {
           trigger(Event:Fwd_DMA, in_msg.addr,
@@ -1065,7 +1073,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition({IM, SM, OM}, Writeback_Again) {
     b_issueGETX;
-    k_popMandatoryQueue;
+    n_popResponseQueue;
   }
 
   transition(S, L1_Replacement, SI) {   //cjc_update2: whether drop silent, don't send message to l2cache? can't, need notice l2 to update local_dir, but we can
@@ -1127,20 +1135,31 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     kk_deallocateL1CacheBlock;
   }
 
+  transition(O, PUTO, OI) {
+    i_allocateTBE;
+    dd_issuePUTO;
+    forward_eviction_to_cpu;
+    kk_deallocateL1CacheBlock;
+  }
+
   transition(O, Fwd_GETX, I) {
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
   }
 
-  /* transition(O, Fwd_GETS) {  //cjc_update3
+  transition(O, O_to_S, S) {
+    l_popForwardQueue;
+  }
+
+  transition(O, Fwd_GETS) {  //cjc_update3
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
     l_popForwardQueue;
-  }    */
+  }     
 
-  transition(O, Fwd_GETS, OS) {
+  /* transition(O, Fwd_GETS, OS) {
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
@@ -1155,7 +1174,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }   
+  }  */ 
 
   transition(O, Fwd_DMA) {
     e_sendData;
@@ -1222,10 +1241,27 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(M, Fwd_GETS, O) {
+  transition(M, Fwd_GETS, O) {   //HERE
     e_sendData;
     l_popForwardQueue;
+  } 
+
+  /* transition(M, Fwd_GETS, MS) {
+    e_sendData;
+    //e_sendDataToL1;
+    //e_sendDataToL2;
+    i_allocateTBE;
+    dd_issuePUTData;
+    l_popForwardQueue;
+    //forward_eviction_to_cpu;
+    //kk_deallocateL1CacheBlock;
   }
+
+  transition(MS, Writeback_Ack_Data, S) {  //cjc_update3
+    qq_sendWBDataFromTBEToL2;  // always send data
+    s_deallocateTBE;
+    n_popResponseQueue;
+  }  */ 
 
   transition(M, Fwd_DMA) {
     e_sendData;
