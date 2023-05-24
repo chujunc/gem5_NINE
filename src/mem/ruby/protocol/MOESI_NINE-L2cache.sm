@@ -111,7 +111,7 @@ machine(MachineType:L2Cache, "Token protocol")
     OLSXW, AccessPermission:Read_Only, desc="local WB request from sharer, was OLSX";
 
     IFLS, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer";
-    
+
     IFLO, AccessPermission:Busy, desc="Blocked, forwarded local GETS to local owner";
     IFLOX, AccessPermission:Busy, desc="Blocked, forwarded local GETS to local owner but chip is exclusive";
     IFLOXX, AccessPermission:Busy, desc="Blocked, forwarded local GETX to local owner/exclusive, chip is exclusive";
@@ -1716,7 +1716,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition({ILOSWD, ILSWD, ILOSXWD, ILSSXWD }, {L1_GETX, L1_GETS}) {
     st_stallAndWaitL1RequestQueue;
-  }  
+  }
 
   // must happened because we forwarded GETX to local exclusive trying to do wb
   transition({M, O, ILS, ILOX, OLS, OLSX, SLS, S}, L1_PUTX) {  //l1_putX is initialled by l1_replacement
@@ -2064,7 +2064,7 @@ machine(MachineType:L2Cache, "Token protocol")
     h_countLocalSharersExceptRequestor;
     // issue INVs to everyone except requestor
     ee_issueLocalInvExceptL1Requestor;
-    d_sendDataToL1GETX; 
+    d_sendDataToL1GETX;
     y_copyCacheStateToDir;
     r_setMRU;
     rr_deallocateL2CacheBlock;
@@ -2136,6 +2136,11 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
+  transition(ILSWD, Exclusive_Unblock, ILS) {
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(ILSWD, L1_WBDIRTYDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
@@ -2159,31 +2164,6 @@ machine(MachineType:L2Cache, "Token protocol")
   }
   //version2 end
 
-  //version1 begin
-  /* transition({ILS,IFLS}, L1_WBDIRTYDATA, SLS) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    u_writeDirtyDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  // clean writeback
-  transition({ILS,IFLS}, L1_WBCLEANDATA, SLS) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    u_writeCleanDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(SLS, Unblock, SLS) {  //cjc_update3
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  } */
-  //version1 end
-
   // original begin
   transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
@@ -2201,13 +2181,13 @@ machine(MachineType:L2Cache, "Token protocol")
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
-  } 
+  }
 
   transition(IFLOX, Unblock, ILOSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
-  } 
+  }
 
   transition(IFLOSX, Unblock, ILOSX) {
     g_recordLocalSharer;
@@ -2226,12 +2206,12 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-  // original end 
-  
-  // -----------------------------------------------
-  
+  // original end
 
-  
+  // -----------------------------------------------
+
+
+
 
   /*
   //version 3 begin
@@ -2287,18 +2267,18 @@ machine(MachineType:L2Cache, "Token protocol")
     g_recordLocalSharer;
     n_popResponseQueue;
     //wa_wakeUpDependents;
-  }  
+  }
 
   transition({ILOSX, IFLOX}, L1_PUT_data, ILOSXWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
-  } 
-  
+  }
+
   transition({IFLOSX}, L1_PUT_data, ILOSXWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
-  }  
-  
+  }
+
   transition(ILOSXWD, Unblock, ILOSXWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
@@ -2339,8 +2319,8 @@ machine(MachineType:L2Cache, "Token protocol")
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
     wa_wakeUpDependents;
-  } 
-  
+  }
+
   transition(OLSX, Unblock, OLSX){
     g_recordLocalSharer;
     n_popResponseQueue;
@@ -2353,7 +2333,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  // version2 end  */   
+  // version2 end  */
 
 
   transition(IFLOXX, Exclusive_Unblock, ILX) {  //cjc_update3
@@ -2862,6 +2842,11 @@ machine(MachineType:L2Cache, "Token protocol")
     gg_clearSharerFromL1Response;
     n_popResponseQueue;
     wa_wakeUpDependents;
+  }
+
+  transition(SLS, L1_PUT_data, SLS) {  //cjc_update2
+    l_writebackAckDropData;
+    o_popL1RequestQueue;
   }
 
   transition(SLS, L1_PUTS, SLS) {  //cjc_update2

@@ -1108,11 +1108,21 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     //kk_deallocateL1CacheBlock;
   }
 
-  transition(S, Writeback_Ack_Data) {  
+  transition(S, Writeback_Ack_Data) {
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  } 
+  }
+
+  transition(SM, Writeback_Ack_Data) {
+    gg_sendUnblockExclusive;  // always send data
+    n_popResponseQueue;
+  }
+
+  transition(S, Writeback_Ack) {
+    s_deallocateTBE;
+    n_popResponseQueue;
+  }
 
   transition(S, Fwd_DMA) {
     e_sendData;
@@ -1157,7 +1167,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     //e_sendDataToL1;
     //e_sendDataToL2;
     l_popForwardQueue;
-  }     
+  }
 
   /* transition(O, Fwd_GETS, OS) {
     e_sendData;
@@ -1174,7 +1184,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }  */ 
+  }  */
 
   transition(O, Fwd_DMA) {
     e_sendData;
@@ -1244,7 +1254,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition(M, Fwd_GETS, O) {   //HERE
     e_sendData;
     l_popForwardQueue;
-  } 
+  }
 
   /* transition(M, Fwd_GETS, MS) {
     e_sendData;
@@ -1261,7 +1271,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }  */ 
+  }  */
 
   transition(M, Fwd_DMA) {
     e_sendData;
@@ -1338,7 +1348,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition(OM, Fwd_GETS) {
     e_sendData;
     l_popForwardQueue;
-  }  
+  }
 
   transition(OM, Fwd_DMA) {
     e_sendData;
@@ -1372,7 +1382,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(IS, Data, S) {   
+  transition(IS, Data, S) {
     u_writeDataToCache;
     m_decrementNumberOfMessages;
     hx_load_hit;
@@ -1413,7 +1423,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({SI, OI}, Fwd_GETS) {  
+  transition({SI, OI}, Fwd_GETS) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
   }
@@ -1435,8 +1445,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition({SI, OI, MI}, Writeback_Ack_SU, I) {  //cjc_update
+  transition({SI, OI, MI}, Writeback_Ack_SU, I) {  //cjc_update2
     s_deallocateTBE;
+    n_popResponseQueue;
+  }
+
+  transition(I, Writeback_Ack_SU) {  //cjc_update2
     n_popResponseQueue;
   }
 
