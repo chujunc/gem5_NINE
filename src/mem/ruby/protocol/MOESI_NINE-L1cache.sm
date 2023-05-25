@@ -1470,7 +1470,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   // Transitions from OI/MI
-
   /* transition(MI, Fwd_GETS, OI) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;

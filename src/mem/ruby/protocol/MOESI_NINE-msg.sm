@@ -64,6 +64,7 @@ enumeration(CoherenceRequestType, desc="...") {
   DMA_WRITE, desc="DMA Write";
 }
 
+
 // CoherenceResponseType
 enumeration(CoherenceResponseType, desc="...") {
   ACK,               desc="ACKnowledgment, responder doesn't have a copy";
