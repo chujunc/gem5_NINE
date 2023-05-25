@@ -1555,6 +1555,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
+  transition(I, Writeback_Nack) {
+    n_popResponseQueue;
+  }
+
   transition(SI, Writeback_Nack) {
     dd_issuePUTS;
     n_popResponseQueue;
