@@ -1486,7 +1486,7 @@ machine(MachineType:L2Cache, "Token protocol")
       }
     }
   }
-  
+
   action(l_writebackAckDropDataAndSharerUpdated, "\lu", desc="Send writeback ack to L1 indicating to drop data, local dir already update") {  //cjc_update2
     peek(L1requestNetwork_in, RequestMsg) {
       enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
@@ -2957,10 +2957,28 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition(ILSW, L1_WBDIRTYDATA, SLS) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeDirtyDataToCache;
+    gg_clearSharerFromL1Request;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(IW, L1_WBCLEANDATA, S) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeCleanDataToCache;
+    gg_clearSharerFromL1Request;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(IW, L1_WBDIRTYDATA, S) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeDirtyDataToCache;
     gg_clearSharerFromL1Request;
     o_popL1RequestQueue;
     wa_wakeUpDependents;

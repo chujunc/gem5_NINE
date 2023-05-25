@@ -1122,7 +1122,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({S, SM, O, OM, MM, MM_W, M, M_W}, Load) {
+  transition({S, SM, MS, O, OM, MM, MM_W, M, M_W}, Load) {
     h_load_hit;
     uu_profileDataHit;
     k_popMandatoryQueue;
@@ -1455,7 +1455,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition(IS, Exclusive_Data, MM_W) {  //cjc_update4
+  transition(IS, Exclusive_Data, M_W) {  //cjc_update4
     u_writeDataToCache;
     m_decrementNumberOfMessages;
     hx_load_hit;
