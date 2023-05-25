@@ -180,13 +180,15 @@ machine(MachineType:L2Cache, "Token protocol")
     Data,            desc="Received a data message, responder has a shared copy";
     Data_Exclusive,  desc="Received a data message";
     L1_WBCLEANDATA,       desc="Writeback from L1, with data";
-    L1_WBCLEANDATAtoL2,   desc="Writeback from L1, with data to l2";
     L1_WBDIRTYDATA,       desc="Writeback from L1, with data";
+    L1_WBDIRTYDATA_DROP,  desc="Writeback from L1, with data, L1 is MI";
+    L1_WBCLEANDATA_DROP,  desc="Writeback from L1, with data, L1 is MI";
 
     Writeback_Ack,   desc="Writeback O.K. from directory";  //Send writeback ack to L1 indicating to drop data
     Writeback_Nack,  desc="Writeback not O.K. from directory";
 
     Unblock,         desc="Local L1 is telling L2 dir to unblock";
+    Unblock_O,       desc="Local L1 is telling L2 dir to unblock";
     Exclusive_Unblock,         desc="Local L1 is telling L2 dir to unblock";
 
     DmaAck,          desc="DMA ack from local L1";
@@ -387,6 +389,23 @@ machine(MachineType:L2Cache, "Token protocol")
       }
       DirEntry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.clear();
+      dir_entry.OwnerValid := true;
+      dir_entry.Owner := exc_id;
+    }
+  }
+
+  void recordNewLocalOwnerInDir(Entry cache_entry, Addr addr, MachineID exc_id) {
+
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.OwnerValid := true;
+      cache_entry.Owner := exc_id;
+    }
+    else {
+      if (localDirectory.isTagPresent(addr) == false) {
+        localDirectory.allocate(addr);
+      }
+      DirEntry dir_entry := getDirEntry(addr);
       dir_entry.OwnerValid := true;
       dir_entry.Owner := exc_id;
     }
@@ -664,6 +683,9 @@ machine(MachineType:L2Cache, "Token protocol")
         } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_EXCLUSIVE) {
           trigger(Event:Exclusive_Unblock, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_O) {
+          trigger(Event:Unblock_O, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_ACK) {
           trigger(Event:Writeback_Ack, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
@@ -760,6 +782,30 @@ machine(MachineType:L2Cache, "Token protocol")
           }
           else {
             trigger(Event:L1_WBCLEANDATA, in_msg.addr,
+                    cache_entry, TBEs[in_msg.addr]);
+          }
+        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_DIRTY_DATA_DROP) {
+          Entry cache_entry := getCacheEntry(in_msg.addr);
+          if (is_invalid(cache_entry) &&
+                   L2cache.cacheAvail(in_msg.addr) == false) {
+            Addr victim := L2cache.cacheProbe(in_msg.addr);
+            trigger(Event:L2_Replacement,
+                    victim, getCacheEntry(victim), TBEs[victim]);
+          }
+          else {
+            trigger(Event:L1_WBDIRTYDATA_DROP, in_msg.addr,
+                    cache_entry, TBEs[in_msg.addr]);
+          }
+        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_CLEAN_DATA_DROP) {
+          Entry cache_entry := getCacheEntry(in_msg.addr);
+          if (is_invalid(cache_entry) &&
+                   L2cache.cacheAvail(in_msg.addr) == false) {
+            Addr victim := L2cache.cacheProbe(in_msg.addr);
+            trigger(Event:L2_Replacement,
+                    victim, getCacheEntry(victim), TBEs[victim]);
+          }
+          else {
+            trigger(Event:L1_WBCLEANDATA_DROP, in_msg.addr,
                     cache_entry, TBEs[in_msg.addr]);
           }
         } else {
@@ -1228,6 +1274,12 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  action(g_recordLocalSharerFromL1request, "\no", desc="Record new local owner from unblock message") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      recordLocalSharerInDir(cache_entry, in_msg.addr, in_msg.Requestor);
+    }
+  }
+
   action(gg_clearLocalSharers, "gg", desc="Clear local sharers") {
     removeAllLocalSharersFromDir(cache_entry, address);
   }
@@ -1426,7 +1478,7 @@ machine(MachineType:L2Cache, "Token protocol")
     peek(L1requestNetwork_in, RequestMsg) {
       enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
         out_msg.addr := in_msg.addr;
-        out_msg.Type := CoherenceResponseType:WB_ACK;
+        out_msg.Type := CoherenceResponseType:WB_DROP_DATA;
         out_msg.Sender := machineID;
         out_msg.SenderMachine := MachineType:L2Cache;
         out_msg.Destination.add(in_msg.Requestor);
@@ -2107,12 +2159,75 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
+  //transition(ILX, L1_GETS, IFLOXX) begin   //cjc_update3
   transition(ILX, L1_GETS, IFLOXX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
 
+  transition(IFLOXX, Unblock, IFLOXX) { //l1: M->S, I->S; l2: I->O
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    //wa_wakeUpDependents;
+  }
+
+  transition(IFLOXX, L1_PUT_data, ILOSWD) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
+  }
+
+  transition(ILOSWD, Unblock, ILOSWD) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+  }
+
+  transition(ILOSWD, L1_WBDIRTYDATA, OLSX) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    gg_clearOwnerFromL1Request;
+    g_recordLocalSharerFromL1request;
+    u_writeDirtyDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(ILOSWD, L1_WBCLEANDATA, OLSX) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    gg_clearOwnerFromL1Request;
+    g_recordLocalSharerFromL1request;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(ILOSWD, L1_WBDIRTYDATA_DROP, OLSX) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    gg_clearOwnerFromL1Request;
+    u_writeDirtyDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(ILOSWD, L1_WBCLEANDATA_DROP, OLSX) {
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    gg_clearOwnerFromL1Request;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(OLSX, Unblock, OLSX) {  
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+  //transition(ILX, L1_GETS, IFLOXX) end 
+
+  //transition(ILS, L1_GETS, IFLS) begin   //cjc_update3
   transition(ILS, L1_GETS, IFLS) {
     k_forwardLocalGETSToLocalSharer;
     uu_profileMiss;
@@ -2125,7 +2240,6 @@ machine(MachineType:L2Cache, "Token protocol")
     //wa_wakeUpDependents;
   }
 
-  //verison2 begin
   transition({ILS,IFLS}, L1_PUT_data, ILSWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
@@ -2157,12 +2271,12 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(SLS, Unblock, SLS) {  //cjc_update3
+  transition(SLS, Unblock, SLS) {  
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-  //version2 end
+  //transition(ILS, L1_GETS, IFLS) end 
 
   // original begin
   transition(ILOSX, L1_GETS, IFLOSX) {
@@ -2195,149 +2309,34 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition(IFLOSX, Unblock_O, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(IFLO, Unblock, ILOS) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
-  transition(IFLOXX, Unblock, ILOSX) {
+  /* transition(IFLOXX, Unblock, ILOSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
-  }
+  } */
   // original end
-
-  // -----------------------------------------------
-
-
-
-
-  /*
-  //version 3 begin
-  transition(IFLOXX, Unblock, ILOSX) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    //wa_wakeUpDependents;
-  }
-
-  transition({IFLOXX, ILOSX}, L1_PUT_data, ILSSXWD) {
-    l_writebackAckNeedData;
-    o_popL1RequestQueue;
-  }
-
-  transition(ILSSXWD, Unblock, ILSSXWD) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-  }
-
-  transition(ILSSXWD, L1_WBDIRTYDATA, OLSX) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeDirtyDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(ILSSXWD, L1_WBCLEANDATA, OLSX) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeCleanDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(OLSX, Unblock, OLSX) {  //cjc_update3
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  }
-  //version3 end
-
-  /* // version2 begin
-  //        -------------------------------------------------
-  transition({ILOS,IFLO}, L1_PUT_data, ILOSWD) {
-    l_writebackAckNeedData;
-    o_popL1RequestQueue;
-  }
-
-  transition(ILOSWD, Unblock, ILOSWD) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    //wa_wakeUpDependents;
-  }
-
-  transition({ILOSX, IFLOX}, L1_PUT_data, ILOSXWD) {
-    l_writebackAckNeedData;
-    o_popL1RequestQueue;
-  }
-
-  transition({IFLOSX}, L1_PUT_data, ILOSXWD) {
-    l_writebackAckNeedData;
-    o_popL1RequestQueue;
-  }
-
-  transition(ILOSXWD, Unblock, ILOSXWD) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    //wa_wakeUpDependents;
-  }
-
-  transition(ILOSWD, L1_WBDIRTYDATA, OLS) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeDirtyDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(ILOSWD, L1_WBCLEANDATA, OLS) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeCleanDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(ILOSXWD, L1_WBDIRTYDATA, OLSX) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeDirtyDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(ILOSXWD, L1_WBCLEANDATA, OLSX) {
-    vv_allocateL2CacheBlock;
-    y_copyDirToCacheAndRemove;
-    gg_clearOwnerFromL1Request;
-    u_writeCleanDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(OLSX, Unblock, OLSX){
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(OLS, Unblock, OLS){
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  }
-
-  // version2 end  */
 
 
   transition(IFLOXX, Exclusive_Unblock, ILX) {  //cjc_update3
     g_recordLocalExclusive;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(IFLOXX, Unblock_O, ILOSX) {  //cjc_update3
+    g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
@@ -2924,7 +2923,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(ILXW, L1_WBDIRTYDATA, M) {
+  transition(ILXW, L1_WBDIRTYDATA_DROP, M) {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
@@ -2934,7 +2933,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   // clean writeback
-  transition(ILXW, L1_WBCLEANDATA, M) {
+  transition(ILXW, L1_WBCLEANDATA_DROP, M) {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
