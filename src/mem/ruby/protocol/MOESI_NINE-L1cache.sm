@@ -1001,7 +1001,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   //*****************************************************
 
   // Transitions for Load/Store/L2_Replacement from transient states
-  transition({IM, SM, OM, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
+  transition({IM, SM, OM, IS, OI, SI, MI, II, MS}, {Store, L1_Replacement}) {
     zz_recycleMandatoryQueue;
   }
 
