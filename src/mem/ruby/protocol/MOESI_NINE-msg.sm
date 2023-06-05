@@ -49,35 +49,31 @@ enumeration(CoherenceRequestType, desc="...") {
   GETS,      desc="Get Shared";
   PUTX,      desc="Put eXclusive";
   PUTO,      desc="Put Owned";
-  OtoS,      desc="l2 call l1 owner to be s";   //cjc_update3
-  L1PUTO,    desc="l2 call l1 owner to PUT O";   //cjc_update3
-  PUT_DATA,  desc="O Put data";
+  PUT_DATA,  desc="O Put data";  //cjc_update4
   PUTO_SHARERS,      desc="Put Owned, but sharers exist so don't remove from sharers list";
   PUTS,      desc="Put Shared";
   INV,       desc="Invalidation";
   WRITEBACK_CLEAN_DATA,   desc="Clean writeback (contains data)";
   WRITEBACK_CLEAN_ACK,    desc="Clean writeback (contains no data)";
   WRITEBACK_DIRTY_DATA,   desc="Dirty writeback (contains data)";
-  WRITEBACK_DIRTY_DATA_DROP,  desc="Dirty writeback (contains data), and drop from l1";
-  WRITEBACK_CLEAN_DATA_DROP,  desc="Clean writeback (contains data), and drop from l1";
+  WRITEBACK_DIRTY_DATA_DROP,  desc="Dirty writeback (contains data), and drop from l1";  //cjc_update4
+  WRITEBACK_CLEAN_DATA_DROP,  desc="Clean writeback (contains data), and drop from l1";  //cjc_update4
   DMA_READ,  desc="DMA Read";
   DMA_WRITE, desc="DMA Write";
 }
-
 
 // CoherenceResponseType
 enumeration(CoherenceResponseType, desc="...") {
   ACK,               desc="ACKnowledgment, responder doesn't have a copy";
   DATA,              desc="Data";
-  Again,             desc="l2 call l1 send again";
   DATA_EXCLUSIVE,    desc="Data, no processor has a copy";
-  DATA_OtoS,         desc="Data";
+  DATA_OtoS,         desc="Data";  //cjc_update4
   UNBLOCK,           desc="Unblock";
   UNBLOCK_EXCLUSIVE, desc="Unblock, we're in E/M";
-  UNBLOCK_O,         desc="get data from owner";
+  UNBLOCK_O,         desc="get data from owner";  //cjc_update4
   WB_ACK,            desc="Writeback ack";
   WB_ACK_DATA,       desc="Writeback ack";
-  WB_DROP_DATA,      desc="wb drop data";
+  WB_DROP_DATA,      desc="wb drop data";  //cjc_update4
   WB_ACK_SU,         desc="Writeback ack, Sharerlist updated"; //cjc_update2
   WB_NACK,           desc="Writeback neg. ack";
   DMA_ACK,           desc="Ack that a DMA write completed";
