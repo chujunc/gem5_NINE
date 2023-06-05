@@ -95,7 +95,6 @@ machine(MachineType:L2Cache, "Token protocol")
     ILOXW, AccessPermission:Busy, desc="local WB request, was ILOX";
     ILOSW, AccessPermission:Busy, desc="local WB request, was ILOS";
     ILOSXW, AccessPermission:Busy, desc="local WB request, was ILOSX";
-    ILSOXW, AccessPermission:Busy, desc="local WB request, was ILOSX";
     ILSWD, AccessPermission:Busy, desc="local WB data request, was ILS";
     ILOSWD, AccessPermission:Busy, desc="local WB data request, was ILOS";
     ILOSXWD, AccessPermission:Busy, desc="local WB data request, was ILOSX";
@@ -111,7 +110,6 @@ machine(MachineType:L2Cache, "Token protocol")
     OLSXW, AccessPermission:Read_Only, desc="local WB request from sharer, was OLSX";
 
     IFLS, AccessPermission:Busy, desc="Blocked, forwarded local GETS to _some_ local sharer";
-
     IFLO, AccessPermission:Busy, desc="Blocked, forwarded local GETS to local owner";
     IFLOX, AccessPermission:Busy, desc="Blocked, forwarded local GETS to local owner but chip is exclusive";
     IFLOXX, AccessPermission:Busy, desc="Blocked, forwarded local GETX to local owner/exclusive, chip is exclusive";
@@ -163,7 +161,7 @@ machine(MachineType:L2Cache, "Token protocol")
     L1_GETS,             desc="local L1 GETS request";
     L1_GETX,             desc="local L1 GETX request";
     L1_PUTO,             desc="local owner wants to writeback";
-    L1_PUT_data,       desc="local owner wants to writeback data";
+    L1_PUT_data,       desc="local owner wants to writeback data";  //cjc_update3
     L1_PUTX,             desc="local exclusive wants to writeback";
     L1_PUTS_only,             desc="only local sharer wants to writeback";
     L1_PUTS,             desc="local sharer wants to writeback";
@@ -722,7 +720,7 @@ machine(MachineType:L2Cache, "Token protocol")
         } else if (in_msg.Type == CoherenceRequestType:PUTO) {
           trigger(Event:L1_PUTO, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceRequestType:PUT_DATA) {
+        } else if (in_msg.Type == CoherenceRequestType:PUT_DATA) {  //cjc_update3
           trigger(Event:L1_PUT_data, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceRequestType:PUTX) {
@@ -1352,34 +1350,6 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
-  action(l1_OtoS, "\ll1os", desc="Call l1 o to s") {
-    peek(requestNetwork_in, RequestMsg) {
-      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
-        out_msg.addr := in_msg.addr;
-        out_msg.Type := CoherenceRequestType:OtoS;
-        out_msg.Requestor := machineID;
-        out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
-        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
-        out_msg.Acks := 0 - 1;
-      }
-    }
-  }
-
-  action(callL1OwnerPUTO, "\llpo", desc="Call l1 putO") {
-    peek(requestNetwork_in, RequestMsg) {
-      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
-        out_msg.addr := in_msg.addr;
-        out_msg.Type := CoherenceRequestType:L1PUTO;
-        out_msg.Requestor := machineID;
-        out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
-        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
-        out_msg.Acks := 0 - 1;
-      }
-    }
-  }
-
   // same as previous except that it assumes to TBE is present to get number of acks
   action(kk_forwardLocalGETXToLocalExclusive, "kk", desc="Forward local request to local owner") {
     peek(L1requestNetwork_in, RequestMsg) {
@@ -1678,23 +1648,23 @@ machine(MachineType:L2Cache, "Token protocol")
   // TRANSITIONS
   //*****************************************************
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTO, L1_PUTS, L1_PUTS_only, L1_PUTX}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTO, L1_PUTS, L1_PUTS_only, L1_PUTX}) {
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILOXW, ILSSXWD, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUT_data}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILOXW, ILSSXWD, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUT_data}) {
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_GETX, L1_GETS}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_GETX, L1_GETS}) {
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L2_Replacement) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L2_Replacement) {
     zz_recycleL1RequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Fwd_GETX, Fwd_GETS, Fwd_DMA}) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Fwd_GETX, Fwd_GETS, Fwd_DMA}) {
     zz_recycleGlobalRequestQueue;
   }
 
@@ -1702,7 +1672,7 @@ machine(MachineType:L2Cache, "Token protocol")
     zz_recycleGlobalRequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Inv}) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILOSXWD, ILSSXWD, ILOXW, ILOSW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Inv}) {
     zz_recycleGlobalRequestQueue;
   }
 
