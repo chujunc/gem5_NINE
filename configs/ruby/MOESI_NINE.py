@@ -48,15 +48,23 @@ from .Ruby import send_evicts
 #
 # Declare caches used by the protocol
 #
-class L1Cache(RubyCache):
+""" class L1Cache(RubyCache):
     dataAccessLatency = 1
     tagAccessLatency = 1
 
 
 class L2Cache(RubyCache):
     dataAccessLatency = 20
-    tagAccessLatency = 20
+    tagAccessLatency = 20 """
 
+class L1Cache(RubyCache):
+    dataAccessLatency = 2
+    tagAccessLatency = 2
+
+
+class L2Cache(RubyCache):
+    dataAccessLatency = 10
+    tagAccessLatency = 10
 
 def define_options(parser):
     return
