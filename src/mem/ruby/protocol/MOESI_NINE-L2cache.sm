@@ -2114,7 +2114,6 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  //transition(ILX, L1_GETS, IFLOXX) begin   //cjc_update3
   transition(ILX, L1_GETS, IFLOXX) {
     kk_forwardLocalGETSToLocalOwner;
     uu_profileMiss;
@@ -2233,6 +2232,50 @@ machine(MachineType:L2Cache, "Token protocol")
   }
   //transition(ILS, L1_GETS, IFLS) end 
 
+  /* // original begin
+  transition(ILOSX, L1_GETS, IFLOSX) {
+    kk_forwardLocalGETSToLocalOwner;
+    uu_profileMiss;
+    o_popL1RequestQueue;
+  }
+
+  transition({ILOS, ILO}, L1_GETS, IFLO) {
+    kk_forwardLocalGETSToLocalOwner;
+    uu_profileMiss;
+    o_popL1RequestQueue;
+  }
+
+  transition(ILOX, L1_GETS, IFLOX) {
+    kk_forwardLocalGETSToLocalOwner;
+    uu_profileMiss;
+    o_popL1RequestQueue;
+  }
+
+  transition(IFLOX, Unblock, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(IFLOSX, Unblock, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(IFLOSX, Unblock_O, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(IFLO, Unblock, ILOS) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+  // original end */
+
   // original begin
   transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
@@ -2275,12 +2318,6 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
-
-  /* transition(IFLOXX, Unblock, ILOSX) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  } */
   // original end
 
 
