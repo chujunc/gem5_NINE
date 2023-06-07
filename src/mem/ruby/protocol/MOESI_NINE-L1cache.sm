@@ -338,7 +338,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         } else if (in_msg.Type == CoherenceResponseType:DATA) {
           trigger(Event:Data, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceResponseType:DATA_OtoS) {
+        } else if (in_msg.Type == CoherenceResponseType:DATA_OtoS) {  //cjc_update4
           trigger(Event:DataFromOwner, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:DATA_EXCLUSIVE) {
@@ -974,7 +974,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     }
   }
 
-  action(qq_sendWBDataFromTBEToL2AndDrop, "\qd", desc="Send data from TBE to L2 and drop") {
+  action(qq_sendWBDataFromTBEToL2AndDrop, "\qd", desc="Send data from TBE to L2 and drop") {  //cjc_update3
     enqueue(requestNetwork_out, RequestMsg, request_latency) {
       assert(is_valid(tbe));
       out_msg.addr := address;
@@ -1066,7 +1066,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   //*****************************************************
 
   // Transitions for Load/Store/L2_Replacement from transient states
-  transition({IM, SM, OM, IS, OI, SI, MI, II, OS}, {Store, L1_Replacement}) {
+  transition({IM, SM, OM, IS, OI, SI, MI, II, OS}, {Store, L1_Replacement}) {  //add OS
     zz_recycleMandatoryQueue;
   }
 
@@ -1223,7 +1223,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     
   }
 
-  transition(OS, Writeback_Ack_Data, S) {  //cjc_update3
+  transition(OS, Writeback_Ack_Data, S) {  //cjc_update5
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
@@ -1446,7 +1446,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition(IS, Exclusive_Data, M_W) {  //cjc_update4
+  transition(IS, Exclusive_Data, M_W) { 
     u_writeDataToCache;
     m_decrementNumberOfMessages;
     hx_load_hit;

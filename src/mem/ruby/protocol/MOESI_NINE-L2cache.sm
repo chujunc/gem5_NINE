@@ -2208,11 +2208,6 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  /* transition(ILSWD, Exclusive_Unblock, ILS) {
-    n_popResponseQueue;
-    wa_wakeUpDependents;
-  } */
-
   transition(ILSWD, L1_WBDIRTYDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
