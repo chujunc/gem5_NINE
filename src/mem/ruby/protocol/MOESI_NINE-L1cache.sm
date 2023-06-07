@@ -635,7 +635,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     }
   }
 
-  action(e_sendDataToL1, "e1", desc="Send data from cache to l1 for sharing") {  //cjc_update3
+  /* action(e_sendDataToL1, "e1", desc="Send data from cache to l1 for sharing") {  //cjc_update3
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
         enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
@@ -671,7 +671,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
       out_msg.MessageSize := MessageSizeType:Writeback_Data;
     }
     DPRINTF(RubySlicc, "Sending data to L2: %#x\n", address);
-  }
+  } */
 
   action(ee_sendDataExclusive, "\e", desc="Send data from cache to requestor, don't keep a shared copy") {
     peek(requestNetwork_in, RequestMsg) {
@@ -1066,7 +1066,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   //*****************************************************
 
   // Transitions for Load/Store/L2_Replacement from transient states
-  transition({IM, SM, OM, IS, OI, SI, MI, II}, {Store, L1_Replacement}) {
+  transition({IM, SM, OM, IS, OI, SI, MI, II, OS}, {Store, L1_Replacement}) {
     zz_recycleMandatoryQueue;
   }
 
@@ -1142,7 +1142,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     dd_issuePUTS;
     forward_eviction_to_cpu;
     kk_deallocateL1CacheBlock;
-    //g_sendUnblock;
   }
 
   transition(S, Inv, I) {
@@ -1256,17 +1255,17 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  /* transition(MM, Fwd_GETS, I) {   //why not to O or S?
+  transition(MM, Fwd_GETS, I) {   //why not to O or S?
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
-  } */
+  } 
 
-  transition(MM, Fwd_GETS, O) {   //why not to O or S?  //cjc_update4
+  /* transition(MM, Fwd_GETS, O) {   //why not to O or S?  //cjc_update4
     //ee_sendDataExclusive;
     e_sendDataFromOwner;
     l_popForwardQueue;
-  }
+  } */
 
   transition(MM, Fwd_DMA, MM) {
     e_sendData;
@@ -1301,12 +1300,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  /* transition(M, Fwd_GETS, O) {   //HERE
+  transition(M, Fwd_GETS, O) {   //HERE
     e_sendData;
     l_popForwardQueue;
-  } */
+  } 
 
-  transition(M, Fwd_GETS, MS) {
+  /* transition(M, Fwd_GETS, MS) {
     e_sendData;
     i_allocateTBE;
     dd_issuePUTData;
@@ -1317,7 +1316,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     qq_sendWBDataFromTBEToL2;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  }  
+  }   */
 
   transition(M, Fwd_DMA) {
     e_sendData;
@@ -1392,6 +1391,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(OM, Fwd_GETS) {  //cjc_update5
+    //e_sendData;
     e_sendDataFromOwner;
     l_popForwardQueue;
   }
@@ -1461,22 +1461,23 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   // Transitions from OI/MI
-  /* transition(MI, Fwd_GETS, OI) {
+
+  transition(MI, Fwd_GETS, OI) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
-  } */
+  } 
 
-  transition(MI, Fwd_GETS) {
+  /* transition(MI, Fwd_GETS) {
     q_sendDataFromTBEToCache;
     dd_issuePUTData;
     l_popForwardQueue;
-  }
+  }*/
 
   transition(MI, Writeback_Ack_Data, I) {  //cjc_update3
     qq_sendWBDataFromTBEToL2AndDrop;  // always send data
     s_deallocateTBE;
     n_popResponseQueue;
-  } 
+  }  
 
   transition(MI, Fwd_DMA) {
     q_sendDataFromTBEToCache;

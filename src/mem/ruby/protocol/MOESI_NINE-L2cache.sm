@@ -2117,7 +2117,14 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOXX, Unblock, IFLOXX) { //l1: M->S, I->S; l2: I->O  //cjc_update4
+  transition(IFLOXX, Unblock, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+
+  /* transition(IFLOXX, Unblock, IFLOXX) { //l1: M->S, I->S; l2: I->O  //cjc_update4
     g_recordLocalSharer;
     n_popResponseQueue;
     //wa_wakeUpDependents;
@@ -2169,7 +2176,7 @@ machine(MachineType:L2Cache, "Token protocol")
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
     wa_wakeUpDependents;
-  }
+  } */
 
   transition(OLSX, Unblock, OLSX) {  
     g_recordLocalSharer;
