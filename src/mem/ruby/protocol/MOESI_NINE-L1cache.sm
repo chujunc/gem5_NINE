@@ -1391,8 +1391,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(OM, Fwd_GETS) {
-    e_sendData;
+  transition(OM, Fwd_GETS) {  //cjc_update5
+    e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
