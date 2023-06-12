@@ -540,6 +540,8 @@ CacheMemoryStats::CacheMemoryStats(statistics::Group *parent)
       ADD_STAT(m_demand_misses, "Number of cache demand misses"),
       ADD_STAT(m_demand_accesses, "Number of cache demand accesses",
                m_demand_hits + m_demand_misses),
+      ADD_STAT(m_demand_missrate, "cache demand accesses miss rate",
+               m_demand_misses/(m_demand_hits + m_demand_misses) ),
       ADD_STAT(m_prefetch_hits, "Number of cache prefetch hits"),
       ADD_STAT(m_prefetch_misses, "Number of cache prefetch misses"),
       ADD_STAT(m_prefetch_accesses, "Number of cache prefetch accesses",

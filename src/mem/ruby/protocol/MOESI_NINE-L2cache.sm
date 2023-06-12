@@ -1686,7 +1686,11 @@ machine(MachineType:L2Cache, "Token protocol")
   // TRANSITIONS
   //*****************************************************
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTO, L1_PUTS, L1_PUTS_only, L1_PUTX}) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L1_PUTS, L1_PUTS_only, L1_PUTX}) {
+    st_stallAndWaitL1RequestQueue;
+  }
+
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLOX, IFLOXX, IFLOXXGETX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L1_PUTO) {
     st_stallAndWaitL1RequestQueue;
   }
 
@@ -2290,12 +2294,12 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOSX, L1_PUT_data, ILOSXWD) {
+  transition(IFLOSX, {L1_PUT_data, L1_PUTO}, ILOSXWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(ILOSXWD, Unblock_O, ILOSXWD) {
+  transition(ILOSXWD, {Unblock_O, Unblock}, ILOSXWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
@@ -2339,12 +2343,12 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLO, L1_PUT_data, ILOSWD) {
+  transition(IFLO, {L1_PUT_data, L1_PUTO}, ILOSWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
-  transition(IFLO, Unblock_O, IFLO) {
+  transition(IFLO, {Unblock_O, Unblock}, IFLO) {
     g_recordLocalSharer;
     n_popResponseQueue;
     //wa_wakeUpDependents;
