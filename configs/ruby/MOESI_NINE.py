@@ -63,8 +63,8 @@ class L1Cache(RubyCache):
 
 
 class L2Cache(RubyCache):
-    dataAccessLatency = 10
-    tagAccessLatency = 10
+    dataAccessLatency = 2
+    tagAccessLatency = 2
 
 
 def define_options(parser):
