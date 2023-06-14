@@ -58,8 +58,8 @@ class L2Cache(RubyCache):
     tagAccessLatency = 20 """
     
 class L1Cache(RubyCache):
-    dataAccessLatency = 2
-    tagAccessLatency = 2
+    dataAccessLatency = 1
+    tagAccessLatency = 1
 
 
 class L2Cache(RubyCache):
