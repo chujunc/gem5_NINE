@@ -602,19 +602,18 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(e_sendDataToL2, "e2", desc="Send data from cache to L2") {
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
-        enqueue(requestNetwork_out, RequestMsg, request_latency){
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
           out_msg.addr := address;
-          out_msg.Requestor := machineID;
-          out_msg.RequestorMachine := MachineType:L1Cache;
+          out_msg.Type := CoherenceResponseType:DATA;
+          out_msg.Sender := machineID;
+          out_msg.SenderMachine := MachineType:L1Cache;
           out_msg.Destination.add(mapAddressToMachine(address,
                                                       MachineType:L2Cache));
           out_msg.DataBlk := cache_entry.DataBlk;
-          if (cache_entry.Dirty) {
-            out_msg.Type := CoherenceRequestType:WRITEBACK_DIRTY_DATA;
-          } else {
-            out_msg.Type := CoherenceRequestType:WRITEBACK_CLEAN_DATA;
-          }
-          out_msg.MessageSize := MessageSizeType:Writeback_Data;
+          // out_msg.Dirty := cache_entry.Dirty;
+          out_msg.Dirty := false;
+          out_msg.Acks := in_msg.Acks;
+          out_msg.MessageSize := MessageSizeType:Response_Data;
         }
         DPRINTF(RubySlicc, "Sending data to L2: %#x\n", in_msg.addr);
     }
@@ -1170,14 +1169,13 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(S, Fwd_GETS) {  //cjc_update3
-    //e_sendDataToL1;
-    e_sendData;
+  /* transition(S, Fwd_GETS) {  //cjc_update3
+    e_sendDataToL1;
+    //e_sendData;
     e_sendDataToL2;
     l_popForwardQueue;
-  } 
-
-  /* transition(S, Fwd_GETS, SS) {
+  } */
+  transition(S, Fwd_GETS, SS) {
     e_sendData;
     //e_sendDataToL1;
     //e_sendDataToL2;
@@ -1196,7 +1194,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     qq_sendWBDataFromTBEToL2;
     s_deallocateTBE;
     n_popResponseQueue;
-  } */
+  }
 
   transition(SS, Writeback_drop_data, S) {
     s_deallocateTBE;
@@ -1244,13 +1242,19 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   } */
 
-  transition(O, Fwd_GETS, S) {  //cjc_update5
+  transition(O, Fwd_GETS, OS) {  //cjc_update5
     e_sendDataFromOwner;
-    e_sendDataToL2;
+    i_allocateTBE;
+    dd_issuePUTData;
     l_popForwardQueue;
     
   }
 
+  transition(OS, Writeback_Ack_Data, S) {  //cjc_update5
+    qq_sendWBDataFromTBEToL2;  // always send data
+    s_deallocateTBE;
+    n_popResponseQueue;
+  }  
 
   transition(O, Fwd_DMA) {
     e_sendData;
@@ -1389,7 +1393,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition(SM, Fwd_GETS) {
     e_sendData;
-    //dd_issuePUTData;
+    dd_issuePUTData;
     l_popForwardQueue;
   }
 
@@ -1417,7 +1421,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition(OM, Fwd_GETS) {  //cjc_update5
     //e_sendData;
     e_sendDataFromOwner;
-    //dd_issuePUTData;
+    dd_issuePUTData;
     l_popForwardQueue;
   }
 

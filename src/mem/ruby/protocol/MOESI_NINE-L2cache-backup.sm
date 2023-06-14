@@ -2094,7 +2094,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(OLSXS, {Unblock_O, Unblock}, OLSX) {
+  transition(OLSXS, Unblock, OLSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2199,10 +2199,10 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(IFLS, Unblock, ILS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
+    //wa_wakeUpDependents;
   }
 
-  /* transition({ILS,IFLS}, L1_PUT_data, ILSWD) {
+  transition({ILS,IFLS}, L1_PUT_data, ILSWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
@@ -2210,9 +2210,9 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(ILSWD, Unblock, ILSWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
-  } */
+  }
 
-  transition({ILS,IFLS}, L1_WBDIRTYDATA, SLS) {
+  transition(ILSWD, L1_WBDIRTYDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeDirtyDataToCache;
@@ -2220,15 +2220,10 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition({ILS,IFLS}, L1_WBCLEANDATA, SLS) {
+  transition(ILSWD, L1_WBCLEANDATA, SLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     u_writeCleanDataToCache;
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(SLS, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
     o_popL1RequestQueue;
     wa_wakeUpDependents;
   }
@@ -2291,15 +2286,23 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-
-  transition(IFLOSX, {Unblock_O, Unblock}, ILOSX) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
+  transition(IFLOSX, {L1_PUT_data, L1_PUTO}, ILOSXWD) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
   }
 
+  transition(ILOSXWD, {Unblock_O, Unblock}, ILOSXWD) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+  }
 
-  transition({IFLOSX, ILOSX}, L1_WBDIRTYDATA, OLSX) {
+  transition(IFLOSX, Unblock_O, IFLOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    //wa_wakeUpDependents;
+  }
+
+  transition(ILOSXWD, L1_WBDIRTYDATA, OLSX) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2309,7 +2312,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition({IFLOSX, ILOSX}, L1_WBCLEANDATA, OLSX) {
+  transition(ILOSXWD, L1_WBCLEANDATA, OLSX) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2319,12 +2322,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(OLSX, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
-    o_popL1RequestQueue;
-    wa_wakeUpDependents;
-  }
-
-  transition(OLSX, Unblock_O) {  
+  transition(OLSX, Unblock_O, OLSX) {  
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2337,15 +2335,23 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-
-  transition(IFLO, {Unblock_O, Unblock}, ILOS) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
+  transition(IFLO, {L1_PUT_data, L1_PUTO}, ILOSWD) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
   }
 
+  transition(IFLO, {Unblock_O, Unblock}, IFLO) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    //wa_wakeUpDependents;
+  }
 
-  transition({IFLO, ILOS}, L1_WBDIRTYDATA, OLS) {
+  transition(ILOSWD, Unblock_O, ILOSWD) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+  }
+
+  transition(ILOSWD, L1_WBDIRTYDATA, OLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2355,7 +2361,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition({IFLO, ILOS}, L1_WBCLEANDATA, OLS) {
+  transition(ILOSWD, L1_WBCLEANDATA, OLS) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2365,7 +2371,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(OLS, {Unblock_O, Unblock}, OLS) {  
+  transition(OLS, Unblock_O, OLS) {  
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2378,14 +2384,23 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-
-  transition(IFLOX, {Unblock_O, Unblock}, ILOSX) {
-    g_recordLocalSharer;
-    n_popResponseQueue;
-    wa_wakeUpDependents;
+  transition(IFLOX, L1_PUT_data, ILOXWD) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
   }
 
-  transition(IFLOX, L1_WBDIRTYDATA, OLSX) {
+  transition(IFLOX, Unblock_O, IFLOX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    //wa_wakeUpDependents;
+  }
+
+  transition(ILOXWD, Unblock_O, ILOXWD) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+  }
+
+  transition(ILOXWD, L1_WBDIRTYDATA, OLSX) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2395,7 +2410,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(IFLOX, L1_WBCLEANDATA, OLSX) {
+  transition(ILOXWD, L1_WBCLEANDATA, OLSX) {
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
     gg_clearOwnerFromL1Request;
@@ -2749,7 +2764,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(OLSS, {Unblock, Unblock_O}, OLS) {
+  transition(OLSS, Unblock, OLS) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2943,9 +2958,8 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(ILS, L1_PUTS, ILS) {  //cjc_update6
-    gg_clearSharerFromL1Request;
-    l_writebackAckDropDataAndSharerUpdated;
+  transition(ILS, L1_PUTS, ILSW) {
+    l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
 
