@@ -2119,6 +2119,11 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
+  transition(OLSXS, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(OLSXS, Unblock_O, OLSXS) {
     g_recordLocalSharer;
     n_popResponseQueue;
@@ -2227,7 +2232,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLS, Unblock_O, ILS) {
+  transition(IFLS, {Unblock_O, Unblock}, ILS) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2265,6 +2270,12 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(SLS, Unblock_O, SLS) {  
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(S, Unblock_O, SLS) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -2564,6 +2575,8 @@ machine(MachineType:L2Cache, "Token protocol")
     ll_writebackNack;
     o_popL1RequestQueue;
   }
+
+  
 
   transition(OLS, L1_GETX, OGMIO) {
     i_allocateTBE;
