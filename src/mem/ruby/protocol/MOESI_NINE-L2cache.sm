@@ -2556,6 +2556,12 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
+  transition(IGMLS, Unblock_O) {
+    g_recordLocalSharer;
+    h_countLocalSharersExceptRequestor;
+    n_popResponseQueue;
+  }
+
 
   transition(ILOS, L1_GETX, IGMIO) {
     i_allocateTBE;

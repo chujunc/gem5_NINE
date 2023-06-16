@@ -44,7 +44,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
    CacheMemory * L1Dcache;
    Cycles request_latency := 4;
    Cycles response_latency := 4;
-   Cycles use_timeout_latency := 50;
+   Cycles use_timeout_latency := 100;
    bool send_evictions;
 
    // Message Queues
