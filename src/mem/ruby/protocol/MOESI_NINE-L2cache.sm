@@ -2098,10 +2098,9 @@ machine(MachineType:L2Cache, "Token protocol")
     g_recordLocalSharer;
     ee_sendLocalInv1;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
   } 
 
-  transition(IFLOXGETX, IntAck) {
+  transition({IFLOXGETX, IFLOXX, ILX}, IntAck) {
     n_popResponseQueue;
   } 
 
@@ -2119,9 +2118,9 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(OLSXS, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
+  transition({OLSXS, IFLOXGETX, SLSS}, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
     o_popL1RequestQueue;
-    wa_wakeUpDependents;
+    //wa_wakeUpDependents;
   }
 
   transition(OLSXS, Unblock_O, OLSXS) {
@@ -2266,19 +2265,16 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(SLS, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
     o_popL1RequestQueue;
-    wa_wakeUpDependents;
   }
 
   transition(SLS, Unblock_O, SLS) {  
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
   }
 
   transition(S, Unblock_O, SLS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
   }
   //transition(ILS, L1_GETS, IFLS) end 
 
@@ -2363,13 +2359,11 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(OLSX, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
     o_popL1RequestQueue;
-    wa_wakeUpDependents;
   } 
 
   transition(OLSX, Unblock_O) {  
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
   }
 
   //----------------------------------
@@ -2410,12 +2404,10 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(OLS, Unblock_O, OLS) {  
     g_recordLocalSharer;
     n_popResponseQueue;
-    wa_wakeUpDependents;
   }
 
   transition(OLS, {L1_WBDIRTYDATA, L1_WBCLEANDATA}){
     o_popL1RequestQueue;
-    wa_wakeUpDependents;
   }
 
   //------------------------------------
@@ -2582,8 +2574,6 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  
-
   transition(OLS, L1_GETX, OGMIO) {
     i_allocateTBE;
     s_recordGetXL1ID;
@@ -2594,6 +2584,12 @@ machine(MachineType:L2Cache, "Token protocol")
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
+  }
+
+  transition(OGMIO, Unblock_O) {
+    g_recordLocalSharer;
+    h_countLocalSharersExceptRequestor;
+    n_popResponseQueue;
   }
 
   transition(OGMIO, Fwd_GETS) {
@@ -2789,7 +2785,6 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(SLSS, Unblock_O, SLSS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
   }
 
 
@@ -2819,7 +2814,6 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(OLSS, Unblock_O, OLSS) {
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
   }
 
   transition(IGMO, Fwd_GETX, IGM) {
