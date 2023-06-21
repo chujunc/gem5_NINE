@@ -2418,7 +2418,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
 
-  transition(IFLOX, Unblock_O, ILOSX) {
+  transition(IFLOX, {Unblock_O, Unblock}, ILOSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
