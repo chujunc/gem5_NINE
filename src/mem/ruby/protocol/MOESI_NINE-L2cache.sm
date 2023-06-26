@@ -2397,10 +2397,16 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOX, {Unblock_O,Unblock}, IFLOX) {
+  transition(IFLOX, {Unblock_O}, IFLOX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     //wa_wakeUpDependents;
+  }
+
+  transition(IFLOX, Unblock, ILOSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
   }
 
   transition(ILOXWD, Unblock_O, ILOXWD) {
