@@ -47,6 +47,7 @@
 enumeration(CoherenceRequestType, desc="...") {
   GETX,      desc="Get eXclusive";
   GETS,      desc="Get Shared";
+  GLO_GETS,  desc="Global Get Shared";  //cjc_update5_new
   PUTX,      desc="Put eXclusive";
   PUTO,      desc="Put Owned";
   PUT_DATA,  desc="O Put data";  //cjc_update4

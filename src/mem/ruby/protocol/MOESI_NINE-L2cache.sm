@@ -1343,6 +1343,21 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  action(j_forwardGlobalGetSRequestToLocalOwner, "jgs", desc="Forward external request to local owner") {
+    peek(requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceRequestType:GLO_GETS;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Type := in_msg.Type;
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+        out_msg.Acks := 0 - 1;
+      }
+    }
+  }
+
   action(jd_forwardDmaRequestToLocalOwner, "jd", desc="Forward dma request to local owner") {
     peek(requestNetwork_in, RequestMsg) {
       enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
@@ -1766,14 +1781,14 @@ machine(MachineType:L2Cache, "Token protocol")
   transition({ILO, ILX, ILOX}, Fwd_GETS, IFGS) {
     i_allocateTBE;
     t_recordFwdSID;
-    j_forwardGlobalRequestToLocalOwner;
+    j_forwardGlobalGetSRequestToLocalOwner;
     m_popRequestQueue;
   }
 
   transition({ILOS, ILOSX}, Fwd_GETS, ISFGS) {
     i_allocateTBE;
     t_recordFwdSID;
-    j_forwardGlobalRequestToLocalOwner;
+    j_forwardGlobalGetSRequestToLocalOwner;
     m_popRequestQueue;
   }
 
@@ -2099,6 +2114,12 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
+
+  transition(OLSXS, Unblock_O, OLSXS) {  
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    //wa_wakeUpDependents;
+  }  
 
   // after this, can't get Fwd_GETX
   transition(IGMO, Own_GETX) {
@@ -2601,7 +2622,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IGMIO, Fwd_GETS, IGMIOFS) {
     t_recordFwdSID;
-    j_forwardGlobalRequestToLocalOwner;
+    j_forwardGlobalGetSRequestToLocalOwner;
     m_popRequestQueue;
   }
 

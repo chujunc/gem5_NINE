@@ -105,6 +105,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Own_GETX,      desc="We observe our own GetX forwarded back to us";
     Fwd_GETX,      desc="A GetX from another processor";
     Fwd_GETS,      desc="A GetS from another processor";
+    Glo_GETS,      desc="A GetS from another processor global";
     Fwd_DMA,      desc="A GetS from another processor";
     Inv,           desc="Invalidations from the directory";
 
@@ -385,6 +386,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
           }
         } else if (in_msg.Type == CoherenceRequestType:GETS) {
           trigger(Event:Fwd_GETS, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceRequestType:GLO_GETS) {
+          trigger(Event:Glo_GETS, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceRequestType:DMA_READ) {
           trigger(Event:Fwd_DMA, in_msg.addr,
@@ -1093,7 +1097,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     zz_recycleMandatoryQueue;
   }
 
-  transition({M_W, MM_W}, {Fwd_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
+  transition({M_W, MM_W}, {Fwd_GETS, Glo_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
     z_recycleRequestQueue;
   }
 
@@ -1169,12 +1173,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  /* transition(S, Fwd_GETS) {  //cjc_update3
-    e_sendDataToL1;
-    //e_sendData;
-    e_sendDataToL2;
+  transition(S, Glo_GETS) {
+    e_sendData;
     l_popForwardQueue;
-  } */
+  }
+
   transition(S, Fwd_GETS, SS) {
     e_sendData;
     //e_sendDataToL1;
@@ -1237,10 +1240,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  /* transition(O, Fwd_GETS) {  //cjc_update3
+  transition(O, Glo_GETS) {  //cjc_update3
     e_sendData;
     l_popForwardQueue;
-  } */
+  } 
 
   transition(O, Fwd_GETS, OS) {  //cjc_update5
     e_sendDataFromOwner;
@@ -1282,7 +1285,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(MM, Fwd_GETS, I) {   //why not to O or S?
+  transition(MM, {Fwd_GETS, Glo_GETS}, I) {   //why not to O or S?
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
@@ -1327,7 +1330,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(M, Fwd_GETS, O) {   //HERE
+  transition(M, {Fwd_GETS, Glo_GETS}, O) {   //HERE
     e_sendData;
     l_popForwardQueue;
   } 
@@ -1397,6 +1400,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
+  transition(SM, Glo_GETS) {
+    e_sendData;
+    l_popForwardQueue;
+  }
+
   transition(SM, Fwd_DMA) {
     e_sendData;
     ub_dmaUnblockL2Cache;
@@ -1422,6 +1430,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     //e_sendData;
     e_sendDataFromOwner;
     dd_issuePUTData;
+    l_popForwardQueue;
+  }
+
+  transition(OM, Glo_GETS) {
+    e_sendData;
     l_popForwardQueue;
   }
 
@@ -1497,7 +1510,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   // Transitions from OI/MI
 
-  transition(MI, Fwd_GETS, OI) {
+  transition(MI, {Fwd_GETS, Glo_GETS}, OI) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
   } 
@@ -1525,7 +1538,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({SI, OI}, Fwd_GETS) {
+  transition({SI, OI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
   }
