@@ -1240,10 +1240,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Glo_GETS) {  //cjc_update3
+  /* transition(O, Glo_GETS) {  //cjc_update3
     e_sendData;
     l_popForwardQueue;
-  } 
+  }  */
 
   transition(O, Fwd_GETS, OS) {  //cjc_update5
     e_sendDataFromOwner;
@@ -1285,7 +1285,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(MM, {Fwd_GETS, Glo_GETS}, I) {   //why not to O or S?
+  transition(MM, {Fwd_GETS/* , Glo_GETS */}, I) {   //why not to O or S?
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
@@ -1330,7 +1330,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(M, {Fwd_GETS, Glo_GETS}, O) {   //HERE
+  transition(M, {Fwd_GETS/* , Glo_GETS */}, O) {   //HERE
     e_sendData;
     l_popForwardQueue;
   } 

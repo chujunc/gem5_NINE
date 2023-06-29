@@ -2420,6 +2420,9 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IFLOX, {Unblock_O}, IFLOX) {
     g_recordLocalSharer;
+    h_countLocalSharersExceptRequestor;
+    // issue INVs to everyone except requestor
+    ee_issueLocalInvExceptL1Requestor;
     n_popResponseQueue;
     //wa_wakeUpDependents;
   }
