@@ -40,8 +40,8 @@
 
 machine(MachineType:L2Cache, "Token protocol")
 : CacheMemory * L2cache;
-  Cycles response_latency := 1;
-  Cycles request_latency := 1;
+  Cycles response_latency := 4;
+  Cycles request_latency := 4;
 
   // L2 BANK QUEUES
   // From local bank of L2 cache TO the network
