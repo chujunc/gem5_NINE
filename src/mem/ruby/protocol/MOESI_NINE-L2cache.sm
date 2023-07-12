@@ -1374,6 +1374,19 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  action(ee_sendLocalInv1, "\ee1", desc="Send local invalidates") {
+    peek(responseNetwork_in, ResponseMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:INV;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.add(in_msg.Sender);
+        out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+      }
+    }
+  }
+
   action(k_forwardLocalGETXToLocalOwner, "\k", desc="Forward local request to local owner") {
     enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
       assert(is_valid(tbe));
@@ -2082,6 +2095,16 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
+
+  transition(IFLOXXGETX, Unblock, IFLOXXGETX) {
+    g_recordLocalSharer;
+    ee_sendLocalInv1;
+    n_popResponseQueue;
+  } 
+
+  transition({IFLOXXGETX, IFLOXX, ILX}, IntAck) {
+    n_popResponseQueue;
+  } 
 
   transition(OLSX, L1_GETS, OLSXS) {
     d_sendDataToL1GETS;

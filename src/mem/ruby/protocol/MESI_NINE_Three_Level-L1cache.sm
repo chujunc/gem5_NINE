@@ -107,12 +107,12 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     // Responses from the L0 Cache
     // L0 cache received the invalidation message
     // and has sent the data.
-    L0_DataAck,      desc="L0 received INV message, then send data to l1";
+    L0_DataAck,      desc="L0 received INV message, then send data to l1, THIS event happened when l1 gets the data from l0";
 
     Inv,           desc="Invalidate request from L2 bank";
 
     // internally generated requests:
-    L0_Invalidate_Own,  desc="Invalidate line in L0, due to this cache's (L1) requirements";
+    L0_Invalidate_Own,  desc="Invalidate line in L0, due to this cache's (L1) requirements, caused by l1 replacement, so invalidate the line in l0 for inclusive between l0 and l1";
     L0_Invalidate_Else, desc="Invalidate line in L0, due to another cache's requirements";
     L1_Replacement,     desc="Invalidate line in this cache (L1), due to another cache's requirements";
 
@@ -120,16 +120,16 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     Fwd_GETX,   desc="GETX from other processor";
     Fwd_GETS,   desc="GETS from other processor";
 
-    Data,       desc="Data for processor";
-    Data_Exclusive,       desc="Data for processor";
-    DataS_fromL1,       desc="data for GETS request, need to unblock directory";
+    Data,       desc="Data for processor, get from l2";
+    Data_Exclusive,       desc="Data for processor, get from l2";
+    DataS_fromL1,       desc="data for GETS request, need to unblock directory, get from another l1";
     Data_all_Acks,       desc="Data for processor, all acks";
 
-    L0_Ack,        desc="Ack for processor";
-    Ack,        desc="Ack for processor";
-    Ack_all,      desc="Last ack for processor";
+    L0_Ack,        desc="Ack for processor, l0 inv ack";
+    Ack,        desc="Ack for processor, another l1/l2 inv ack ";
+    Ack_all,      desc="Last ack for processor, get all ack so that SM->M";
 
-    WB_Ack,        desc="Ack for replacement";
+    WB_Ack,        desc="Ack for replacement, get from l2 that means the wb at l2 has completed";
 
     // hardware transactional memory
     L0_DataCopy,     desc="Data Block from L0. Should remain in M state.";
@@ -792,10 +792,10 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     z0_stallAndWaitL0Queue;
   }
 
-  transition(I, Load, IS) {
+  transition(I, Load, IS) { //get load request from l1, send gets request to l2
     oo_allocateCacheBlock;
     i_allocateTBE;
-    a_issueGETS;
+    a_issueGETS;  
     uu_profileMiss;
     k_popL0RequestQueue;
   }
