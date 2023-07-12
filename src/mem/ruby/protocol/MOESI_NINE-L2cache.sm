@@ -2109,13 +2109,13 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOXGETX, Unblock_O, IFLOXGETX) {
+  transition(IFLOXGETX, {Unblock_O, Unblock}, IFLOXGETX) {
     g_recordLocalSharer;
     ee_sendLocalInv1;
     n_popResponseQueue;
   } 
 
-  transition({IFLOXGETX, IFLOXX, ILX}, IntAck) {
+  transition({IFLOXGETX, IFLOXXGETX, ILX, IFLOXX}, IntAck) {
     n_popResponseQueue;
   } 
 
@@ -2153,7 +2153,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   }
 
-  transition({ILX, ILOX}, L1_GETX, IFLOXX) {
+  transition({ILX, ILOX}, L1_GETX, IFLOXXGETX) {
     kk_forwardLocalGETXToLocalExclusive;
     e_sendAckToL1Requestor;
     uu_profileMiss;
@@ -2166,17 +2166,15 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOXX, Unblock, ILOSX) {
-    g_recordLocalSharer;
+  transition(IFLOXX, Exclusive_Unblock, ILX) {  //cjc_update3
+    g_recordLocalExclusive;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
-
-  /* transition(IFLOXX, Unblock, IFLOXX) { //l1: M->S, I->S; l2: I->O  //cjc_update4
+  transition(IFLOXX, Unblock, IFLOXX) { //l1: M->S, I->S; l2: I->O  //cjc_update4
     g_recordLocalSharer;
     n_popResponseQueue;
-    //wa_wakeUpDependents;
   }
 
   transition(IFLOXX, L1_PUT_data, ILXWD) {
@@ -2225,7 +2223,7 @@ machine(MachineType:L2Cache, "Token protocol")
     u_writeCleanDataToCache;
     o_popL1RequestQueue;
     wa_wakeUpDependents;
-  } */
+  } 
 
   transition(OLSX, Unblock, OLSX) {  
     g_recordLocalSharer;
@@ -2473,7 +2471,7 @@ machine(MachineType:L2Cache, "Token protocol")
   // v5 end
 
 
-  transition(IFLOXX, Exclusive_Unblock, ILX) {  //cjc_update3
+  transition(IFLOXXGETX, Exclusive_Unblock, ILX) {  //cjc_update3
     g_recordLocalExclusive;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -3083,6 +3081,25 @@ machine(MachineType:L2Cache, "Token protocol")
 
   // clean writeback
   transition(ILXW, L1_WBCLEANDATA, M) {
+    gg_clearLocalSharers;
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(ILXW, L1_WBDIRTYDATA_DROP, M) {  
+    gg_clearLocalSharers;
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeDirtyDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  // clean writeback
+  transition(ILXW, L1_WBCLEANDATA_DROP, M) {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     y_copyDirToCacheAndRemove;
