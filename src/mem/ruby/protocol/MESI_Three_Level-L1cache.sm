@@ -93,7 +93,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     S_IL0, AccessPermission:Busy, desc="Shared in L1, invalidation sent to L0, have not seen response yet";
     E_IL0, AccessPermission:Busy, desc="Exclusive in L1, invalidation sent to L0, have not seen response yet";
     M_IL0, AccessPermission:Busy, desc="Modified in L1, invalidation sent to L0, have not seen response yet";
-    MM_IL0, AccessPermission:Read_Write, desc="Invalidation sent to L0, have not seen response yet";
+    MM_IL0, AccessPermission:Read_Write, desc="Invalidation sent to L0, got thw data from L0, wait for L0_Ack";
     SM_IL0, AccessPermission:Busy, desc="Invalidation sent to L0, have not seen response yet";
   }
 
@@ -107,7 +107,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     // Responses from the L0 Cache
     // L0 cache received the invalidation message
     // and has sent the data.
-    L0_DataAck,      desc="L0 received INV message";
+    L0_DataAck,      desc="L0 received INV message, then l0 sent data to l1";
 
     Inv,           desc="Invalidate request from L2 bank";
 
@@ -125,8 +125,8 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     DataS_fromL1,       desc="data for GETS request, need to unblock directory";
     Data_all_Acks,       desc="Data for processor, all acks";
 
-    L0_Ack,        desc="Ack for processor";
-    Ack,        desc="Ack for processor";
+    L0_Ack,        desc="Ack for processor, L0 inv ack";
+    Ack,        desc="Ack for processor, L0 need to be M, so send upgrade and this Ack is for Upgrade";
     Ack_all,      desc="Last ack for processor";
 
     WB_Ack,        desc="Ack for replacement";
@@ -991,7 +991,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
   }
 
   // directory is blocked when sending exclusive data
-  transition({IS,IS_I}, Data_Exclusive, E) {
+  transition({IS,IS_I}, Data_Exclusive, E) {   //cjc update7
     u_writeDataFromL2Response;
     hh_xdata_to_l0;
     jj_sendExclusiveUnblock;

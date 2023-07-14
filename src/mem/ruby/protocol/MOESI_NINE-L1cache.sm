@@ -1540,6 +1540,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition({SI, OI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCache;
+    dd_issuePUTData;
     l_popForwardQueue;
   }
 
