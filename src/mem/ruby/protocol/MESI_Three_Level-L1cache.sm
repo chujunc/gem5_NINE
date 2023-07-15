@@ -1072,7 +1072,7 @@ machine(MachineType:L1Cache, "MESI Directory L1 Cache CMP")
     kd_wakeUpDependents;
   }
 
-  transition(S_IL0, L0_Ack, SS) {
+  transition(S_IL0, L0_Ack, SS) {  //cjc: why go to SS, means one L0 correspond to one L1?
     k_popL0RequestQueue;
     kd_wakeUpDependents;
   }
