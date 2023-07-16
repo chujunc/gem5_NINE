@@ -1719,7 +1719,7 @@ machine(MachineType:L2Cache, "Token protocol")
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLOX, IFLOXX, IFLOXGETX, IFLOXXGETX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L1_PUTO) {
+  transition({II, IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOXW, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLOX, IFLOSX, IFLO,  IFLOXX, IFLOXGETX, IFLOXXGETX, OLSXS, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, OGMIOF, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, L1_PUTO) {
     st_stallAndWaitL1RequestQueue;
   }
 
@@ -2331,7 +2331,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLOSX, {L1_PUT_data, L1_PUTO}, ILOSXWD) {
+  transition(IFLOSX, {L1_PUT_data}, ILOSXWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
@@ -2341,7 +2341,7 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(IFLOSX, Unblock_O, IFLOSX) {
+  transition(IFLOSX, {Unblock_O, Unblock}, IFLOSX) {
     g_recordLocalSharer;
     n_popResponseQueue;
     //wa_wakeUpDependents;
@@ -2380,7 +2380,7 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
-  transition(IFLO, {L1_PUT_data, L1_PUTO}, ILOSWD) {
+  transition(IFLO, {L1_PUT_data}, ILOSWD) {
     l_writebackAckNeedData;
     o_popL1RequestQueue;
   }
@@ -2391,7 +2391,7 @@ machine(MachineType:L2Cache, "Token protocol")
     //wa_wakeUpDependents;
   }
 
-  transition(ILOSWD, Unblock_O, ILOSWD) {
+  transition(ILOSWD, {Unblock_O, Unblock}, ILOSWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
   }
@@ -2446,7 +2446,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition(ILOXWD, Unblock_O, ILOXWD) {
+  transition(ILOXWD, {Unblock_O, Unblock}, ILOXWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
   }

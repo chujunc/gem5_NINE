@@ -1540,6 +1540,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition({SI, OI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCache;
+    dd_issuePUTData;
     l_popForwardQueue;
   }
 
@@ -1592,6 +1593,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   // transition({II, SI}, Writeback_Nack, I) {
   transition(II, Writeback_Nack, I) {
     s_deallocateTBE;
+    n_popResponseQueue;
+  }
+
+  transition(I, Writeback_Nack) {
+    //s_deallocateTBE;
     n_popResponseQueue;
   }
 
