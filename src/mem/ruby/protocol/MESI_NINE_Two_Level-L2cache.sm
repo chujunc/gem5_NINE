@@ -137,6 +137,14 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     MachineID Exclusive,          desc="Exclusive holder of block";
     DataBlock DataBlk,       desc="data for the block";
     bool Dirty, default="false", desc="data is dirty";
+    bool OwnerValid, default="false", desc="true if Owner means something";
+  }
+
+  structure(DirEntry, desc="...", interface="AbstractCacheEntry", main="false") {
+    NetDest Sharers,            desc="Set of the internal processors that want the block in shared state";
+    MachineID Exclusive,   desc="ID of the L1 cache to forward the block to once we get a response";
+    bool OwnerValid, default="false", desc="true if Owner means something";
+    State DirState,        desc="directory state";
   }
 
   // TBE fields
@@ -158,7 +166,15 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     bool isPresent(Addr);
   }
 
+  structure(PerfectCacheMemory, external = "yes") {
+    void allocate(Addr);
+    void deallocate(Addr);
+    DirEntry lookup(Addr);
+    bool isTagPresent(Addr);
+  }
+
   TBETable TBEs, template="<L2Cache_TBE>", constructor="m_number_of_TBEs";
+  PerfectCacheMemory localDirectory, template="<L2Cache_DirEntry>";
 
   Tick clockEdge();
   Tick cyclesToTicks(Cycles c);
@@ -175,6 +191,248 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   // inclusive cache, returns L2 entries only
   Entry getCacheEntry(Addr addr), return_by_pointer="yes" {
     return static_cast(Entry, "pointer", L2cache[addr]);
+  }
+
+  bool isDirTagPresent(Addr addr) {
+    return (localDirectory.isTagPresent(addr) );
+  }
+
+  DirEntry getDirEntry(Addr address), return_by_pointer="yes" {
+    return localDirectory.lookup(address);
+  }
+
+  bool isOnlySharer(Entry cache_entry, Addr addr, MachineID shar_id) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      if (cache_entry.Sharers.count() > 1) {
+        return false;
+      }
+      else if (cache_entry.Sharers.count() == 1) {
+        if (cache_entry.Sharers.isElement(shar_id)) {
+          return true;
+        }
+        else {
+          return false;  // something happened which should cause this PUTS to be nacked
+        }
+        return true;
+      }
+      else {
+        return false;
+      }
+    }
+    else if (localDirectory.isTagPresent(addr)){
+      DirEntry dir_entry := getDirEntry(addr);
+      if (dir_entry.Sharers.count() > 1) {
+        return false;
+      }
+      else if (dir_entry.Sharers.count() == 1) {
+        if (dir_entry.Sharers.isElement(shar_id)) {
+          return true;
+        }
+        else {
+          return false;  // something happened which should cause this PUTS to be nacked
+        }
+      }
+      else {
+        return false;
+      }
+    }
+    else {
+      // shouldn't happen unless L1 issues PUTS before unblock received
+      return false;
+    }
+  }
+
+  void copyCacheStateToDir(Entry cache_entry, Addr addr) {
+    assert(localDirectory.isTagPresent(addr) == false);
+    assert(is_valid(cache_entry));
+    localDirectory.allocate(addr);
+    DirEntry dir_entry := getDirEntry(addr);
+    dir_entry.DirState := cache_entry.CacheState;
+    dir_entry.Sharers := cache_entry.Sharers;
+    dir_entry.Owner := cache_entry.Owner;
+    dir_entry.OwnerValid := cache_entry.OwnerValid;
+
+  }
+
+  void copyDirToCache(Entry cache_entry, Addr addr) {
+    assert(is_valid(cache_entry));
+    DirEntry dir_entry := getDirEntry(addr);
+    assert(is_valid(dir_entry));
+    cache_entry.Sharers := dir_entry.Sharers;
+    cache_entry.Owner := dir_entry.Owner;
+    cache_entry.OwnerValid := dir_entry.OwnerValid;
+  }
+
+  bool isDirEntryClean(DirEntry dir_entry) {
+    assert(is_valid(dir_entry));
+    return (dir_entry.Sharers.count() == 0) &&
+           (dir_entry.OwnerValid == false);
+  }
+
+  bool isCacheEntryClean(Entry cache_entry) {
+    return (cache_entry.Sharers.count() == 0) &&
+           (cache_entry.OwnerValid == false);
+  }
+
+  void recordLocalSharerInDir(Entry cache_entry, Addr addr, MachineID shar_id) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.Sharers.add(shar_id);
+    }
+    else {
+      if (localDirectory.isTagPresent(addr) == false) {
+        localDirectory.allocate(addr);
+        DirEntry dir_entry := getDirEntry(addr);
+        dir_entry.Sharers.clear();
+        dir_entry.OwnerValid := false;
+      }
+      DirEntry dir_entry := getDirEntry(addr);
+      dir_entry.Sharers.add(shar_id);
+    }
+  }
+
+  void recordNewLocalExclusiveInDir(Entry cache_entry, Addr addr, MachineID exc_id) {
+
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.Sharers.clear();
+      cache_entry.OwnerValid := true;
+      cache_entry.Owner := exc_id;
+    }
+    else {
+      if (localDirectory.isTagPresent(addr) == false) {
+        localDirectory.allocate(addr);
+      }
+      DirEntry dir_entry := getDirEntry(addr);
+      dir_entry.Sharers.clear();
+      dir_entry.OwnerValid := true;
+      dir_entry.Owner := exc_id;
+    }
+  }
+
+  void removeAllLocalSharersFromDir(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.Sharers.clear();
+      cache_entry.OwnerValid := false;
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      dir_entry.Sharers.clear();
+      dir_entry.OwnerValid := false;
+    }
+  }
+
+  void removeSharerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.Sharers.remove(sender);
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      dir_entry.Sharers.remove(sender);
+    }
+  }
+
+  void removeOwnerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      cache_entry.OwnerValid := false;
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      dir_entry.OwnerValid := false;
+    }
+  }
+
+  bool isLocalSharer(Entry cache_entry, Addr addr, MachineID shar_id) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      return cache_entry.Sharers.isElement(shar_id);
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.Sharers.isElement(shar_id);
+    }
+  }
+
+  NetDest getLocalSharers(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      return cache_entry.Sharers;
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.Sharers;
+    }
+  }
+
+  MachineID getLocalOwner(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      return cache_entry.Owner;
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.Owner;
+    }
+  }
+
+  int countLocalSharers(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      return cache_entry.Sharers.count();
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.Sharers.count();
+    }
+  }
+
+  bool isLocalOwnerValid(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      return cache_entry.OwnerValid;
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.OwnerValid;
+    }
+  }
+
+  int countLocalSharersExceptRequestor(Entry cache_entry, Addr addr, MachineID requestor) {
+    if (is_valid(cache_entry)) {
+      assert (localDirectory.isTagPresent(addr) == false);
+      if (cache_entry.Sharers.isElement(requestor)) {
+        return ( cache_entry.Sharers.count() - 1 );
+      }
+      else {
+        return cache_entry.Sharers.count();
+      }
+    }
+    else {
+      DirEntry dir_entry := getDirEntry(addr);
+      if (dir_entry.Sharers.isElement(requestor)) {
+        return ( dir_entry.Sharers.count() - 1 );
+      }
+      else {
+        return dir_entry.Sharers.count();
+      }
+    }
+  }
+
+  State getState(TBE tbe, Entry cache_entry, Addr addr) {
+    if (is_valid(tbe)) {
+      return tbe.TBEState;
+    } else if (is_valid(cache_entry)) {
+      return cache_entry.CacheState;
+    } else if (isDirTagPresent(addr)) {
+      DirEntry dir_entry := getDirEntry(addr);
+      return dir_entry.DirState;
+    } else {
+      return State:I;
+    }
   }
 
   bool isSharer(Addr addr, MachineID requestor, Entry cache_entry) {
@@ -566,7 +824,321 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
       out_msg.MessageSize := MessageSizeType:Response_Data;
     }
   }
+  //-------------------------
+  action(ee_sendLocalInv, "\ee", desc="Send local invalidates") {
+    assert(is_valid(tbe));
+    tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+    DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Pending Acks: %d\n",
+            address, getLocalSharers(cache_entry, address),
+            tbe.NumIntPendingAcks);
+    if (isLocalOwnerValid(cache_entry, address)) {
+      tbe.NumIntPendingAcks := tbe.NumIntPendingAcks + 1;
+      DPRINTF(RubySlicc, "%s\n", getLocalOwner(cache_entry, address));
+    }
 
+    enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+      out_msg.addr := address;
+      out_msg.Type := CoherenceRequestType:INV;
+      out_msg.Requestor := machineID;
+      out_msg.RequestorMachine := MachineType:L2Cache;
+      out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+      if (isLocalOwnerValid(cache_entry, address))
+      {
+        out_msg.Destination.add(getLocalOwner(cache_entry, address));
+      }
+      out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+    }
+  }
+
+  action(ee_sendLocalInvSharersOnly, "\eee", desc="Send local invalidates to sharers if they exist") {
+
+    // assert(countLocalSharers(address)  > 0);
+    assert(is_valid(tbe));
+    tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+
+    if (countLocalSharers(cache_entry, address) > 0) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:INV;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+        out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+      }
+    }
+  }
+
+  action(ee_addLocalIntAck, "e\ee", desc="add a local ack to wait for") {
+    assert(is_valid(tbe));
+    tbe.NumIntPendingAcks := tbe.NumIntPendingAcks + 1;
+  }
+
+  action(ee_issueLocalInvExceptL1Requestor, "\eeee", desc="Send local invalidates to sharers if they exist") {
+      peek(L1requestNetwork_in, RequestMsg) {
+
+//         assert(countLocalSharers(address) > 0);
+        if (countLocalSharers(cache_entry, address) == 0) {
+          tbe.NumIntPendingAcks := 0;
+        }
+        else {
+
+          if (isLocalSharer(cache_entry, address, in_msg.Requestor)) {
+            tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address) - 1;
+          }
+          else {
+            tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+          }
+
+          enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+            out_msg.addr := address;
+            out_msg.Type := CoherenceRequestType:INV;
+            out_msg.Requestor := in_msg.Requestor;
+            out_msg.RequestorMachine := MachineType:L1Cache;
+            out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+            out_msg.Destination.remove(in_msg.Requestor);
+            out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+          }
+        }
+      }
+  }
+
+  action(ee_issueLocalInvExceptL1RequestorInTBE, "\eeeeee", desc="Send local invalidates to sharers if they exist") {
+    assert(is_valid(tbe));
+    if (countLocalSharers(cache_entry, address) == 0) {
+      tbe.NumIntPendingAcks := 0;
+    }
+    else {
+      if (isLocalSharer(cache_entry, address, tbe.L1_GetX_ID)) {
+        tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address) - 1;
+      }
+      else {
+        tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+      }
+    }
+    enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:INV;
+        out_msg.Requestor := tbe.L1_GetX_ID;
+        out_msg.RequestorMachine := MachineType:L1Cache;
+        out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+        out_msg.Destination.remove(tbe.L1_GetX_ID);
+        out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+    }
+  }
+
+
+  action(f_sendUnblock, "fNINE", desc="Send unblock to global directory") {
+    enqueue(responseNetwork_out, ResponseMsg, response_latency) {
+      out_msg.addr := address;
+      out_msg.Type := CoherenceResponseType:UNBLOCK;
+      out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+      out_msg.Sender := machineID;
+      out_msg.SenderMachine := MachineType:L2Cache;
+      out_msg.MessageSize := MessageSizeType:Unblock_Control;
+    }
+  }
+
+
+  action(f_sendExclusiveUnblock, "\f", desc="Send unblock to global directory") {
+    enqueue(responseNetwork_out, ResponseMsg, response_latency) {
+      out_msg.addr := address;
+      out_msg.Type := CoherenceResponseType:UNBLOCK_EXCLUSIVE;
+      out_msg.Destination.add(mapAddressToMachine(address, MachineType:Directory));
+      out_msg.Sender := machineID;
+      out_msg.SenderMachine := MachineType:L2Cache;
+      out_msg.MessageSize := MessageSizeType:Unblock_Control;
+    }
+  }
+
+
+  action(g_recordLocalSharer, "g", desc="Record new local sharer from unblock message") {
+    peek(responseNetwork_in, ResponseMsg) {
+      recordLocalSharerInDir(cache_entry, in_msg.addr, in_msg.Sender);
+    }
+  }
+
+  action(g_recordLocalExclusive, "\g", desc="Record new local exclusive sharer from unblock message") {
+    peek(responseNetwork_in, ResponseMsg) {
+      recordNewLocalExclusiveInDir(cache_entry, address, in_msg.Sender);
+    }
+  }
+
+  action(gg_clearLocalSharers, "gg", desc="Clear local sharers") {
+    removeAllLocalSharersFromDir(cache_entry, address);
+  }
+
+  action(gg_clearSharerFromL1Response, "\gg", desc="Clear sharer from L1 response queue") {
+    peek(responseNetwork_in, ResponseMsg) {
+      removeSharerFromDir(cache_entry, in_msg.addr, in_msg.Sender);
+    }
+  }
+
+  action(gg_clearSharerFromL1Request, "clsl1r", desc="Clear sharer from L1 request queue") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      removeSharerFromDir(cache_entry, in_msg.addr, in_msg.Requestor);
+    }
+  }
+
+  action(gg_clearOwnerFromL1Request, "clol1r", desc="Clear owner from L1 request queue") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      removeOwnerFromDir(cache_entry, in_msg.addr, in_msg.Requestor);
+    }
+  }
+
+  action(h_countLocalSharersExceptRequestor, "h", desc="counts number of acks needed for L1 GETX") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      assert(is_valid(tbe));
+      tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(cache_entry, address, in_msg.Requestor);
+    }
+  }
+
+  action(h_clearIntAcks, "\h", desc="clear IntAcks") {
+    assert(is_valid(tbe));
+    tbe.Local_GETX_IntAcks := 0;
+  }
+
+  action(hh_countLocalSharersExceptL1GETXRequestorInTBE, "hh", desc="counts number of acks needed for L1 GETX") {
+    assert(is_valid(tbe));
+    tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(cache_entry, address, tbe.L1_GetX_ID);
+  }
+
+  action(i_copyDataToTBE, "\i", desc="Copy data from response queue to TBE") {
+    peek(responseNetwork_in, ResponseMsg) {
+      assert(is_valid(tbe));
+      tbe.DataBlk := in_msg.DataBlk;
+      tbe.Dirty := in_msg.Dirty;
+      APPEND_TRANSITION_COMMENT(in_msg.Sender);
+    }
+  }
+
+  action(j_forwardGlobalRequestToLocalOwner, "j", desc="Forward external request to local owner") {
+    peek(requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := in_msg.Type;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Type := in_msg.Type;
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+        out_msg.Acks := 0 - 1;
+      }
+    }
+  }
+
+  action(jd_forwardDmaRequestToLocalOwner, "jd", desc="Forward dma request to local owner") {
+    peek(requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := in_msg.Type;
+        out_msg.Requestor := in_msg.Requestor;
+        out_msg.RequestorMachine := in_msg.RequestorMachine;
+        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Type := in_msg.Type;
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+        out_msg.Acks := 0 - 1;
+      }
+    }
+  }
+
+
+  action(k_forwardLocalGETSToLocalSharer, "kNINE", desc="Forward local request to local sharer/owner") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceRequestType:GETS;
+        out_msg.Requestor := in_msg.Requestor;
+        out_msg.RequestorMachine := MachineType:L1Cache;
+        // should randomize this so one node doesn't get abused more than others
+        DirEntry dir_entry := getDirEntry(in_msg.addr);
+        out_msg.Destination.add(dir_entry.Sharers.smallestElement(MachineType:L1Cache));
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+      }
+    }
+  }
+
+  action(k_forwardLocalGETXToLocalOwner, "\kNINE", desc="Forward local request to local owner") {
+    enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+      assert(is_valid(tbe));
+      out_msg.addr := address;
+      out_msg.Type := CoherenceRequestType:GETX;
+      out_msg.Requestor := tbe.L1_GetX_ID;
+      out_msg.RequestorMachine := MachineType:L1Cache;
+      DirEntry dir_entry := getDirEntry(address);
+      out_msg.Destination.add(dir_entry.Owner);
+      out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+      out_msg.Acks := 1 + tbe.Local_GETX_IntAcks;
+    }
+  }
+
+  // same as previous except that it assumes to TBE is present to get number of acks
+  action(kk_forwardLocalGETXToLocalExclusive, "kk", desc="Forward local request to local owner") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceRequestType:GETX;
+        out_msg.Requestor := in_msg.Requestor;
+        out_msg.RequestorMachine := MachineType:L1Cache;
+        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+        out_msg.Acks := 1;
+      }
+    }
+  }
+
+  action(kk_forwardLocalGETSToLocalOwner, "\kk", desc="Forward local request to local owner") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceRequestType:GETS;
+        out_msg.Requestor := in_msg.Requestor;
+        out_msg.RequestorMachine := MachineType:L1Cache;
+        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.MessageSize := MessageSizeType:Forwarded_Control;
+      }
+    }
+  }
+
+
+  action(l_writebackAckNeedData, "l", desc="Send writeback ack to L1 requesting data") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceResponseType:WB_ACK_DATA;
+        out_msg.Sender := machineID;
+        out_msg.SenderMachine := MachineType:L2Cache;
+        out_msg.Destination.add(in_msg.Requestor);
+        out_msg.MessageSize := MessageSizeType:Writeback_Control;
+      }
+    }
+  }
+
+  action(l_writebackAckDropData, "\lNINE", desc="Send writeback ack to L1 indicating to drop data") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceResponseType:WB_ACK;
+        out_msg.Sender := machineID;
+        out_msg.SenderMachine := MachineType:L2Cache;
+        out_msg.Destination.add(in_msg.Requestor);
+        out_msg.MessageSize := MessageSizeType:Writeback_Control;
+      }
+    }
+  }
+
+  action(ll_writebackNack, "\ll", desc="Send writeback nack to L1") {
+    peek(L1requestNetwork_in, RequestMsg) {
+      enqueue( responseNetwork_out, ResponseMsg, response_latency ) {
+        out_msg.addr := in_msg.addr;
+        out_msg.Type := CoherenceResponseType:WB_NACK;
+        out_msg.Sender := machineID;
+        out_msg.SenderMachine := MachineType:L2Cache;
+        out_msg.Destination.add(in_msg.Requestor);
+        out_msg.MessageSize := MessageSizeType:Writeback_Control;
+      }
+    }
+  }
+  //-----------------------------------------------------
   action(f_sendInvToSharers, "f", desc="invalidate sharers for L2 replacement") {
     enqueue(L1RequestL2Network_out, RequestMsg, to_l1_latency) {
       assert(is_valid(cache_entry));
@@ -621,7 +1193,26 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     TBEs.deallocate(address);
     unset_tbe();
   }
+  //------------------------------NINE begin
+  action(y_copyCacheStateToDir, "y", desc="Copy cache state to directory state") {
+    copyCacheStateToDir(cache_entry, address);
+  }
 
+  action(y_copyDirToCacheAndRemove, "/y", desc="Copy dir state to cache and remove") {
+    copyDirToCache(cache_entry, address);
+    localDirectory.deallocate(address);
+  }
+
+  action(checkCacheNoSharersNoOwner, "/ckcache", desc="Remove dir state") {
+    assert(is_valid(cache_entry));
+    assert(isCacheEntryClean(cache_entry));
+  }
+
+  action(removeFromDir, "/rmdir", desc="Remove dir state") {
+    assert(isDirEntryClean(getDirEntry(address)));
+    localDirectory.deallocate(address);
+  }
+  //--------------------------------------NINE end
   action(jj_popL1RequestQueue, "\j", desc="Pop incoming L1 request queue") {
     Tick delay := L1RequestL2Network_in.dequeue(clockEdge());
     profileMsgDelay(0, ticksToCycles(delay));
@@ -807,7 +1398,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   // BASE STATE - I
 
   // Transitions from I (Idle)
-  transition({NP, IS, ISS, IM, SS, M, M_I, I_I, S_I, MT_IB, MT_SB}, L1_PUTX) {
+  transition({NP, IS, ISS, IM, SS, M, M_I, I_I, S_I, MT_IB, MT_SB}, L1_PUTX) {  //cjc: cause inclusive, these states in l2 means the putx data is no use, so drop
     t_sendWBAck;
     jj_popL1RequestQueue;
   }
@@ -835,7 +1426,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
   }
 
 
-  transition(NP, L1_GETS,  ISS) {
+  transition(NP, L1_GETS,  ISS) { //cjc: shouldn't add sharer at this time when use nine
     qq_allocateL2CacheBlock;
     ll_clearSharers;
     nn_addSharer;
@@ -893,7 +1484,7 @@ machine(MachineType:L2Cache, "MESI Directory L2 Cache CMP")
     o_popIncomingResponseQueue;
   }
 
-  transition({IS, ISS}, {L1_GETS, L1_GET_INSTR}, IS) {
+  transition({IS, ISS}, {L1_GETS, L1_GET_INSTR}, IS) { //cjc
     nn_addSharer;
     ss_recordGetSL1ID;
     uu_profileMiss;

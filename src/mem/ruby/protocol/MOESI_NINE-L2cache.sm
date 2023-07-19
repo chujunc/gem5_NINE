@@ -2444,6 +2444,12 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition(M, Unblock, OLSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(ILOXWD, Unblock_O, ILOXWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
@@ -2573,7 +2579,7 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
-  transition(IGMLS, Unblock_O) {
+  transition(IGMLS, {Unblock_O, Unblock}) {
     g_recordLocalSharer;
     h_countLocalSharersExceptRequestor;
     n_popResponseQueue;
