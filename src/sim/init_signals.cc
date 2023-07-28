@@ -162,7 +162,7 @@ static void
 segvHandler(int sigtype)
 {
     STATIC_ERR("gem5 has encountered a segmentation fault!\n\n");
-
+    printf("the segmentation fault type is %d\n\n",sigtype);
     print_backtrace();
     raiseFatalSignal(SIGSEGV);
 }

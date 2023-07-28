@@ -621,7 +621,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(f_sendAck, "f", desc="Send ack from cache to requestor") {
     peek(requestNetwork_in, RequestMsg) {
       if (in_msg.RequestorMachine == MachineType:L1Cache) {
-        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:ACK;
           out_msg.Sender := machineID;

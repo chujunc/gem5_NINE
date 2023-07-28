@@ -707,7 +707,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(f_sendAck, "f", desc="Send ack from cache to requestor") {
     peek(requestNetwork_in, RequestMsg) {
       if (in_msg.RequestorMachine == MachineType:L1Cache) {
-        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:ACK;
           out_msg.Sender := machineID;
@@ -1189,8 +1189,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(S, Fwd_GETS, SS) {
-    //e_sendData;
-    e_sendDataFromOwner;
+    e_sendData;
+    //e_sendDataFromOwner;
     //e_sendDataToL1;
     //e_sendDataToL2;
     i_allocateTBE;
@@ -1199,8 +1199,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(SS, Fwd_GETS) {
-    //e_sendData;
-    e_sendDataFromOwner;
+    e_sendData;
+    //e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
@@ -1401,8 +1401,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(SM, Fwd_GETS) {
-    //e_sendData;
-    e_sendDataFromOwner;
+    e_sendData;
+    //e_sendDataFromOwner;
     dd_issuePUTData;
     l_popForwardQueue;
   }
@@ -1547,8 +1547,14 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({SI, OI}, {Fwd_GETS, Glo_GETS}) {
+  transition({OI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCacheFromOwner;
+    dd_issuePUTData;
+    l_popForwardQueue;
+  }
+
+  transition({SI}, {Fwd_GETS, Glo_GETS}) {
+    q_sendDataFromTBEToCache;
     dd_issuePUTData;
     l_popForwardQueue;
   }
