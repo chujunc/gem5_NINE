@@ -59,6 +59,7 @@ python_class_map = {
     "VIPERCoalescer": "VIPERCoalescer",
     "DirectoryMemory": "RubyDirectoryMemory",
     "PerfectCacheMemory": "RubyPerfectCacheMemory",
+    "SnoopFilter": "SnoopFilter",
     "MemoryControl": "MemoryControl",
     "MessageBuffer": "MessageBuffer",
     "DMASequencer": "DMASequencer",

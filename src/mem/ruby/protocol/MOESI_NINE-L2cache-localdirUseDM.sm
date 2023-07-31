@@ -40,6 +40,7 @@
 
 machine(MachineType:L2Cache, "Token protocol")
 : CacheMemory * L2cache;
+  CacheMemory * ProbeFilterMemory;
   Cycles response_latency := 4;
   Cycles request_latency := 4;
 
@@ -245,19 +246,20 @@ machine(MachineType:L2Cache, "Token protocol")
     bool isPresent(Addr);
   }
 
-  structure(PerfectCacheMemory, external = "yes") {
+  /* structure(SnoopFilter, external = "yes") {
     void allocate(Addr);
     void deallocate(Addr);
     DirEntry lookup(Addr);
     bool isTagPresent(Addr);
-  }
+  } */
 
   TBETable TBEs, template="<L2Cache_TBE>", constructor="m_number_of_TBEs";
-  PerfectCacheMemory localDirectory, template="<L2Cache_DirEntry>";
+  /* SnoopFilter ProbeFilterMemory, template="<L2Cache_DirEntry>"; */
 
   Tick clockEdge();
   Tick cyclesToTicks(Cycles c);
   void set_cache_entry(AbstractCacheEntry b);
+  void set_cache_entry_DirEntry(DirEntry b);
   void unset_cache_entry();
   void set_tbe(TBE b);
   void unset_tbe();
@@ -279,16 +281,18 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   bool isDirTagPresent(Addr addr) {
-    return (localDirectory.isTagPresent(addr) );
+    return (ProbeFilterMemory.isTagPresent(addr) );
   }
 
   DirEntry getDirEntry(Addr address), return_by_pointer="yes" {
-    return localDirectory.lookup(address);
+    //return ProbeFilterMemory.lookup(address);
+    DirEntry entry := static_cast(DirEntry, "pointer", ProbeFilterMemory.lookup(address));
+    return entry;
   }
 
   bool isOnlySharer(Entry cache_entry, Addr addr, MachineID shar_id) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       if (cache_entry.Sharers.count() > 1) {
         return false;
       }
@@ -305,7 +309,7 @@ machine(MachineType:L2Cache, "Token protocol")
         return false;
       }
     }
-    else if (localDirectory.isTagPresent(addr)){
+    else if (ProbeFilterMemory.isTagPresent(addr)){
       DirEntry dir_entry := getDirEntry(addr);
       if (dir_entry.Sharers.count() > 1) {
         return false;
@@ -328,10 +332,31 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  /* action(apf_allocateProbeFilterEntry, "apf", desc="Allocate probe filte entry") {
+    if (!ProbeFilterMemory.isTagPresent(address)) {
+        if (inclusiveDir) {
+            assert(ProbeFilterMemory.cacheAvail(address));
+        } else if (ProbeFilterMemory.cacheAvail(address) == false) {
+          Addr victim := ProbeFilterMemory.cacheProbe(address);
+          ProbeFilterMemory.deallocate(victim);
+        }
+        assert(ProbeFilterMemory.cacheAvail(address));
+        CacheEntry entry := static_cast(CacheEntry, "pointer", ProbeFilterMemory.allocate(address, new CacheEntry));
+        APPEND_TRANSITION_COMMENT(" allocating a new probe filter entry");
+        entry.pfState := ProbeFilterState:NT;
+        if (inclusiveDir) {
+          entry.pfState := ProbeFilterState:T;
+        }
+        entry.isOnCPU := false;
+        entry.isOnGPU := false;
+    }
+  } */
+
   void copyCacheStateToDir(Entry cache_entry, Addr addr) {
-    assert(localDirectory.isTagPresent(addr) == false);
+    assert(ProbeFilterMemory.isTagPresent(addr) == false);
     assert(is_valid(cache_entry));
-    localDirectory.allocate(addr);
+    //set_cache_entry(ProbeFilterMemory.allocate(addr, new DirEntry));
+    DirEntry entry := static_cast(DirEntry, "pointer", ProbeFilterMemory.allocate(addr, new DirEntry));
     DirEntry dir_entry := getDirEntry(addr);
     dir_entry.DirState := cache_entry.CacheState;
     dir_entry.Sharers := cache_entry.Sharers;
@@ -362,12 +387,14 @@ machine(MachineType:L2Cache, "Token protocol")
 
   void recordLocalSharerInDir(Entry cache_entry, Addr addr, MachineID shar_id) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       cache_entry.Sharers.add(shar_id);
     }
     else {
-      if (localDirectory.isTagPresent(addr) == false) {
-        localDirectory.allocate(addr);
+      if (ProbeFilterMemory.isTagPresent(addr) == false) {
+        //set_cache_entry(ProbeFilterMemory.allocate(addr, new DirEntry));
+        DirEntry entry := static_cast(DirEntry, "pointer", ProbeFilterMemory.allocate(addr, new DirEntry));
+        //ProbeFilterMemory.allocate(addr);
         DirEntry dir_entry := getDirEntry(addr);
         dir_entry.Sharers.clear();
         dir_entry.OwnerValid := false;
@@ -380,14 +407,16 @@ machine(MachineType:L2Cache, "Token protocol")
   void recordNewLocalExclusiveInDir(Entry cache_entry, Addr addr, MachineID exc_id) {
 
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       cache_entry.Sharers.clear();
       cache_entry.OwnerValid := true;
       cache_entry.Owner := exc_id;
     }
     else {
-      if (localDirectory.isTagPresent(addr) == false) {
-        localDirectory.allocate(addr);
+      if (ProbeFilterMemory.isTagPresent(addr) == false) {
+        //set_cache_entry(ProbeFilterMemory.allocate(addr, new DirEntry));
+        DirEntry entry := static_cast(DirEntry, "pointer", ProbeFilterMemory.allocate(addr, new DirEntry));
+        //ProbeFilterMemory.allocate(addr);
       }
       DirEntry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.clear();
@@ -398,7 +427,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   void removeAllLocalSharersFromDir(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       cache_entry.Sharers.clear();
       cache_entry.OwnerValid := false;
     }
@@ -411,7 +440,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   void removeSharerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       cache_entry.Sharers.remove(sender);
     }
     else {
@@ -422,7 +451,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   void removeOwnerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       cache_entry.OwnerValid := false;
     }
     else {
@@ -433,7 +462,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   bool isLocalSharer(Entry cache_entry, Addr addr, MachineID shar_id) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       return cache_entry.Sharers.isElement(shar_id);
     }
     else {
@@ -444,7 +473,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   NetDest getLocalSharers(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       return cache_entry.Sharers;
     }
     else {
@@ -455,7 +484,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   MachineID getLocalOwner(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       return cache_entry.Owner;
     }
     else {
@@ -466,7 +495,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   int countLocalSharers(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       return cache_entry.Sharers.count();
     }
     else {
@@ -477,7 +506,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   bool isLocalOwnerValid(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       return cache_entry.OwnerValid;
     }
     else {
@@ -488,7 +517,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   int countLocalSharersExceptRequestor(Entry cache_entry, Addr addr, MachineID requestor) {
     if (is_valid(cache_entry)) {
-      assert (localDirectory.isTagPresent(addr) == false);
+      assert (ProbeFilterMemory.isTagPresent(addr) == false);
       if (cache_entry.Sharers.isElement(requestor)) {
         return ( cache_entry.Sharers.count() - 1 );
       }
@@ -528,12 +557,12 @@ machine(MachineType:L2Cache, "Token protocol")
     // Consistency checks
 
     // Either on the the cache, directory, or invalid
-    assert((localDirectory.isTagPresent(addr) && L2cache.isTagPresent(addr)) == false);
+    assert((ProbeFilterMemory.isTagPresent(addr) && L2cache.isTagPresent(addr)) == false);
 
     if (state == State:I) {
       assert(L2cache.isTagPresent(addr) == false);
       assert(is_valid(cache_entry) == false);
-      assert(localDirectory.isTagPresent(addr) == false);
+      assert(ProbeFilterMemory.isTagPresent(addr) == false);
     } else if ( (state == State:M) ||
                 (state == State:O) ||
                 (state == State:S) ||
@@ -548,7 +577,7 @@ machine(MachineType:L2Cache, "Token protocol")
                 (state == State:ILOX) ||
                 (state == State:ILOS) ||
                 (state == State:ILOSX)) {
-       assert(localDirectory.isTagPresent(addr));
+       assert(ProbeFilterMemory.isTagPresent(addr));
     }
 
     // Update state
@@ -559,7 +588,7 @@ machine(MachineType:L2Cache, "Token protocol")
     if (is_valid(cache_entry)) {
       cache_entry.CacheState := state;
     }
-    else if (localDirectory.isTagPresent(addr)) {
+    else if (ProbeFilterMemory.isTagPresent(addr)) {
       DirEntry dir_entry := getDirEntry(addr);
       dir_entry.DirState := state;
     }
@@ -1584,6 +1613,12 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  action( r_SFsetMRU, "\rrrr", desc="manually set the MRU bit for cache line" ) {
+    if(is_valid(cache_entry)) {
+      ProbeFilterMemory.setMRU(address);
+    }
+  }
+
   action( s_recordGetXL1ID, "ss", desc="record local GETX requestor") {
     peek(L1requestNetwork_in, RequestMsg) {
       assert(is_valid(tbe));
@@ -1663,7 +1698,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(y_copyDirToCacheAndRemove, "/y", desc="Copy dir state to cache and remove") {
     copyDirToCache(cache_entry, address);
-    localDirectory.deallocate(address);
+    ProbeFilterMemory.deallocate(address);
   }
 
   action(checkCacheNoSharersNoOwner, "/ckcache", desc="Remove dir state") {
@@ -1673,7 +1708,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(removeFromDir, "/rmdir", desc="Remove dir state") {
     assert(isDirEntryClean(getDirEntry(address)));
-    localDirectory.deallocate(address);
+    ProbeFilterMemory.deallocate(address);
   }
 
   action(zz_recycleGlobalRequestQueue, "\zglb", desc="Send the head of the mandatory queue to the back of the queue.") {
@@ -2056,7 +2091,7 @@ machine(MachineType:L2Cache, "Token protocol")
     t_recordFwdXID;
     ee_sendLocalInv;
     gg_clearLocalSharers;
-    removeFromDir;   // localDirectory.deallocate(address);
+    removeFromDir;   // ProbeFilterMemory.deallocate(address);
     m_popRequestQueue;
   }
 
