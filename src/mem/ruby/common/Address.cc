@@ -41,7 +41,7 @@ Addr
 bitSelect(Addr addr, unsigned int small, unsigned int big)
 {
     assert(big >= small);
-    return bits<Addr>(addr, big, small);
+    return bits<Addr>(addr, big, small);   //cuts address fragments from address
 }
 
 Addr
