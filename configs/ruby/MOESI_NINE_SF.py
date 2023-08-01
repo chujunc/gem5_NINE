@@ -108,7 +108,6 @@ def create_system(
             size=options.l1i_size,
             assoc=options.l1i_assoc,
             start_index_bit=block_size_bits,
-            #replacement_policy=LRURP(),
             is_icache=True,
         )
         l1d_cache = L1Cache(

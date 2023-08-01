@@ -332,10 +332,12 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   void copyCacheStateToDir(Entry cache_entry, Addr addr) {
+    //Entry dir_entry := getDirEntry(addr);
+    //DPRINTF(ProtocolTrace, "%s, %s, %#x\n", cache_entry.CacheState, dir_entry.CacheState, addr);
     assert(ProbeFilterMemory.isTagPresent(addr) == false);
     assert(is_valid(cache_entry));
-    //Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
-    static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+    Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+    //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
     Entry dir_entry := getDirEntry(addr);
     dir_entry.CacheState := cache_entry.CacheState;
     dir_entry.Sharers := cache_entry.Sharers;
@@ -371,7 +373,8 @@ machine(MachineType:L2Cache, "Token protocol")
     }
     else {
       if (ProbeFilterMemory.isTagPresent(addr) == false) {
-        static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+        Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+        //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
         Entry dir_entry := getDirEntry(addr);
         dir_entry.Sharers.clear();
         dir_entry.OwnerValid := false;
@@ -391,7 +394,8 @@ machine(MachineType:L2Cache, "Token protocol")
     }
     else {
       if (ProbeFilterMemory.isTagPresent(addr) == false) {
-        static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+        Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
+        //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
       }
       Entry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.clear();
@@ -2149,8 +2153,10 @@ machine(MachineType:L2Cache, "Token protocol")
     // issue INVs to everyone except requestor
     ee_issueLocalInvExceptL1Requestor;
     d_sendDataToL1GETX;
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
-    r_setMRU;
+    r_SFsetMRU;
+    r_setMRU; //whether need?
     rr_deallocateL2CacheBlock;
     uu_profileHit; 
     o_popL1RequestQueue;
@@ -2533,7 +2539,9 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     r_setMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
@@ -2615,7 +2623,9 @@ machine(MachineType:L2Cache, "Token protocol")
     a_issueGETX;
     h_countLocalSharersExceptRequestor;
     // COPY DATA FROM CACHE TO TBE (happens during i_allocateTBE)
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2761,6 +2771,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(IGS, Unblock, ILS) {
+    //vv_allocateSnoopFilterBlock;
     g_recordLocalSharer;
     f_sendUnblock;
     s_deallocateTBE;
@@ -2769,6 +2780,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(IGS, Exclusive_Unblock, ILX) {
+    vv_allocateSnoopFilterBlock;
     g_recordLocalExclusive;
     f_sendExclusiveUnblock;
     s_deallocateTBE;
@@ -2797,7 +2809,9 @@ machine(MachineType:L2Cache, "Token protocol")
     // count number of INVs needed that doesn't include requestor
     h_countLocalSharersExceptRequestor;
     // issue INVs to everyone except requestor, send inv when get data
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2828,7 +2842,9 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2874,7 +2890,9 @@ machine(MachineType:L2Cache, "Token protocol")
     // should count 0 of course
     h_countLocalSharersExceptRequestor;
     d_sendDataToL1GETX;
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     s_deallocateTBE;
     uu_profileHit;
@@ -2925,8 +2943,10 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(OO, Exclusive_Unblock, ILX) {
-    g_recordLocalExclusive
+    g_recordLocalExclusive;
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -3265,27 +3285,37 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(ILS, L2_Replacement) {
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition(ILX, L2_Replacement )  {
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition({ILO, ILOS}, L2_Replacement )  {
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition(SLS, L2_Replacement, ILS) {
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition({OLS, OLSX}, L2_Replacement, OLSI) {
+    //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     b_issuePUTO_ls;
     i_allocateTBE;
     rr_deallocateL2CacheBlock;
@@ -3354,14 +3384,14 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition({MI, OI}, Writeback_Ack, I) {
     qq_sendDataFromTBEToMemory;
-    removeFromDir;
+    //removeFromDir;
     s_deallocateTBE;
     n_popResponseQueue;
     wa_wakeUpDependents;
   }
 
   transition(MII, Writeback_Nack, I) {
-    removeFromDir;
+    //removeFromDir;
     s_deallocateTBE;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -3381,7 +3411,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(MII, Writeback_Ack, I) {
     f_sendUnblock;
-    removeFromDir;
+    //removeFromDir;
     s_deallocateTBE;
     n_popResponseQueue;
     wa_wakeUpDependents;
