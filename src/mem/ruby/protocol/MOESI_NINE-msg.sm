@@ -54,6 +54,7 @@ enumeration(CoherenceRequestType, desc="...") {
   PUTO_SHARERS,      desc="Put Owned, but sharers exist so don't remove from sharers list";
   PUTS,      desc="Put Shared";
   INV,       desc="Invalidation";
+  INV_SF,    desc="Invalidation by SF";
   WRITEBACK_CLEAN_DATA,   desc="Clean writeback (contains data)";
   WRITEBACK_CLEAN_ACK,    desc="Clean writeback (contains no data)";
   WRITEBACK_DIRTY_DATA,   desc="Dirty writeback (contains data)";

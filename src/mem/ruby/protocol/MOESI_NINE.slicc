@@ -1,9 +1,9 @@
 protocol "MOESI_NINE";
 include "RubySlicc_interfaces.slicc";
 include "MOESI_NINE-msg.sm";
-include "MOESI_NINE-L1cache.sm";
+include "MOESI_NINE-L1cache-SF.sm";
 //include "MOESI_CMP_directory-L1cache.sm";
-include "MOESI_NINE-L2cache-localdirUseSF.sm";
+include "MOESI_NINE-L2cache-SF.sm";
 //include "MOESI_CMP_directory-L2cache.sm";
 include "MOESI_NINE-dma.sm";
 include "MOESI_NINE-dir.sm";

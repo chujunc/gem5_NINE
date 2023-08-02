@@ -157,6 +157,9 @@ machine(MachineType:L2Cache, "Token protocol")
     ILOD, AccessPermission:Busy, desc="Blocked, waiting for DMA ack";
     ILXD, AccessPermission:Busy, desc="Blocked, waiting for DMA ack";
     ILOXD, AccessPermission:Busy, desc="Blocked, waiting for DMA ack";
+
+    //SF
+    ILX_SF, AccessPermission:Busy, desc="Blocked, waiting for L1 ack";
   }
 
   // EVENTS
@@ -472,6 +475,17 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
+  MachineID getLocalOwnerbySF(Entry cache_entry, Addr addr) {
+    if (is_valid(cache_entry)) {
+      //assert (ProbeFilterMemory.isTagPresent(addr) == false);
+      return cache_entry.Owner;
+    }
+    else {
+      Entry dir_entry := getDirEntry(addr);
+      return dir_entry.Owner;
+    }
+  }
+
   int countLocalSharers(Entry cache_entry, Addr addr) {
     if (is_valid(cache_entry)) {
       assert (ProbeFilterMemory.isTagPresent(addr) == false);
@@ -733,8 +747,14 @@ machine(MachineType:L2Cache, "Token protocol")
           if (is_invalid(cache_entry) &&
                    ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
             Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
-            trigger(Event:SF_Replacement,
-                    victimSF, getDirEntry(victimSF), TBEs[victimSF]);
+            Entry cache_entry := getCacheEntry(victimSF);
+            if (is_invalid(cache_entry) && L2cache.cacheAvail(victimSF) == false) {
+              Addr victim := L2cache.cacheProbe(victimSF);
+              trigger(Event:L2_Replacement, victim, getCacheEntry(victim), TBEs[victim]);
+            }
+            else {
+              trigger(Event:SF_Replacement,victimSF, getDirEntry(victimSF), TBEs[victimSF]);
+            }
           }
           else {
             trigger(Event:L1_GETX, in_msg.addr,
@@ -764,7 +784,8 @@ machine(MachineType:L2Cache, "Token protocol")
           }
         } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_DIRTY_DATA) {
           Entry cache_entry := getCacheEntry(in_msg.addr);
-          if (is_invalid(cache_entry) && L2cache.cacheAvail(in_msg.addr) == false) {
+          if (is_invalid(cache_entry) && L2cache.cacheAvail(in_msg.addr) == false) { 
+            //L1 WB A to L2, A cause L2 Repl B, B insert SF and cause SF Repl C
             Addr victim := L2cache.cacheProbe(in_msg.addr);
             Entry cache_entry := getDirEntry(victim);
             if (is_invalid(cache_entry) && ProbeFilterMemory.cacheAvail(victim) == false) {
@@ -1250,6 +1271,18 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.MessageSize := MessageSizeType:Invalidate_Control;
       }
     }
+  }
+
+  action(ee_sendLocalInv1bySF, "\ee1sf", desc="Send local invalidates") {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:INV_SF;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.add(getLocalOwnerbySF(cache_entry, address));
+        out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+      }
+    
   }
 
   action(ee_issueLocalInvExceptL1RequestorInTBE, "\eeeeee", desc="Send local invalidates to sharers if they exist") {
@@ -1782,8 +1815,12 @@ machine(MachineType:L2Cache, "Token protocol")
     st_stallAndWaitL1RequestQueue;
   }
 
-  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXGETX, IFLOXXGETX, IFLOSX, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L2_Replacement, SF_Replacement}) {
+  transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILOSW, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, ILXW, OW, SW, OXW, OLSXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXGETX, IFLOXXGETX, IFLOSX, OLSXS,  IGS, IGM, IGMLS, IGMO, IGMOU, MM, SS, OO, OI, MI, MII, OLSI, ILSI, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {L2_Replacement}) {
     zz_recycleL1RequestQueue;
+  }
+
+  transition({ILX_SF}, SF_Replacement) {
+    st_stallAndWaitL1RequestQueue;
   }
 
   transition({IFGX, IFGS, ISFGS, IFGXX, IFGXXD, IFLXO, ILOW, ILOXW, ILOSW, ILSWD, ILOSWD, ILXWD, ILOSXWD, ILOXWD, ILSOXW, ILOSXW, SLSW, OLSW, ILSW, IW, OW, SW, OXW, OLSXW, ILXW, IFLS, IFLO, IFLOX, IFLOXX, IFLOXGETX, IFLOXXGETX, IFLOSX, OLSXS, IGS, IGM, MM, SS, OO, SLSS, OLSS, OLSF, IGMIOFS, ILOSD, ILOSXD, ILOD, ILXD, ILOXD}, {Fwd_GETX, Fwd_GETS, Fwd_DMA}) {
@@ -2211,6 +2248,19 @@ machine(MachineType:L2Cache, "Token protocol")
     e_sendAckToL1Requestor;
     uu_profileMiss;
     o_popL1RequestQueue;
+  }
+
+  transition({ILX, ILOX}, SF_Replacement, ILX_SF) {
+    ee_sendLocalInv1bySF;
+  }
+
+  transition(ILX_SF, L1_WBDIRTYDATA, M) {
+    gg_clearLocalSharers;
+    vv_allocateL2CacheBlock;
+    y_copyDirToCacheAndRemove;
+    u_writeDirtyDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
   }
 
   transition(ILX, L1_GETS, IFLOXX) {
@@ -3285,22 +3335,16 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(ILS, L2_Replacement) {
-    //vv_allocateSnoopFilterBlock;
-    y_copyCacheStateToDir;
     r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition(ILX, L2_Replacement )  {
-    //vv_allocateSnoopFilterBlock;
-    y_copyCacheStateToDir;
     r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }
 
   transition({ILO, ILOS}, L2_Replacement )  {
-    //vv_allocateSnoopFilterBlock;
-    y_copyCacheStateToDir;
     r_SFsetMRU;
     rr_deallocateL2CacheBlock;
   }

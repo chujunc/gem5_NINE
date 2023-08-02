@@ -109,6 +109,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Glo_GETS,      desc="A GetS from another processor global";
     Fwd_DMA,      desc="A GetS from another processor";
     Inv,           desc="Invalidations from the directory";
+    Inv_sf,        desc="Invalidations from SF";
 
     // Responses
     Ack,             desc="Received an ack message";
@@ -213,7 +214,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   Cycles cacheResponseDataLatency() {
+      if (L1Dcache.getTagLatency() > response_data_latency) {
+      return L1Dcache.getTagLatency();
+    } else {
       return response_data_latency;
+    }
   }
 
   void setState(TBE tbe, Entry cache_entry, Addr addr, State state) {
@@ -401,6 +406,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         } else if (in_msg.Type == CoherenceRequestType:INV) {
           trigger(Event:Inv, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+        } else if (in_msg.Type == CoherenceRequestType:INV_SF) {
+          trigger(Event:Inv_sf, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else {
           error("Unexpected message");
         }
@@ -575,7 +583,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
       if (in_msg.RequestorMachine == MachineType:L2Cache) {
-        enqueue(responseNetwork_out, ResponseMsg, cacheResponseDataLatency()) {
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA;
           out_msg.Sender := machineID;
@@ -611,7 +619,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(e_sendDataToL2, "e2", desc="Send data from cache to L2") {
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
-        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseDataLatency()) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA;
           out_msg.Sender := machineID;
@@ -648,7 +656,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         DPRINTF(RubySlicc, "Sending data to L2: %#x\n", in_msg.addr);
       }
       else {
-        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseDataLatency()) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA_OtoS;
           out_msg.Sender := machineID;
@@ -669,7 +677,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     peek(requestNetwork_in, RequestMsg) {
       assert(is_valid(cache_entry));
       if (in_msg.RequestorMachine == MachineType:L2Cache) {
-        enqueue(responseNetwork_out, ResponseMsg, cacheResponseDataLatency()) {
+        enqueue(responseNetwork_out, ResponseMsg, cacheResponseLatency()) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA_EXCLUSIVE;
           out_msg.Sender := machineID;
@@ -703,7 +711,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   action(f_sendAck, "f", desc="Send ack from cache to requestor") {
     peek(requestNetwork_in, RequestMsg) {
       if (in_msg.RequestorMachine == MachineType:L1Cache) {
-        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:ACK;
           out_msg.Sender := machineID;
@@ -897,7 +905,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         }
       }
       else {
-        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA;
           out_msg.Sender := machineID;
@@ -933,7 +941,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         }
       }
       else {
-        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA_OtoS;
           out_msg.Sender := machineID;
@@ -967,7 +975,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         }
       }
       else {
-        enqueue(responseNetwork_out, ResponseMsg, response_data_latency) {
+        enqueue(responseNetwork_out, ResponseMsg, response_latency) {
           out_msg.addr := address;
           out_msg.Type := CoherenceResponseType:DATA_EXCLUSIVE;
           out_msg.Sender := machineID;
@@ -1179,12 +1187,14 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(S, Glo_GETS) {
-    e_sendData;
+    //e_sendData;
+    e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
   transition(S, Fwd_GETS, SS) {
     e_sendData;
+    //e_sendDataFromOwner;
     //e_sendDataToL1;
     //e_sendDataToL2;
     i_allocateTBE;
@@ -1194,6 +1204,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition(SS, Fwd_GETS) {
     e_sendData;
+    //e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
@@ -1279,6 +1290,16 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     kk_deallocateL1CacheBlock;
   }
 
+  transition(MM, Inv_sf, I) {
+    i_allocateTBE;
+    //d_issuePUTX;
+    qq_sendWBDataFromTBEToL2;  // always send data
+    s_deallocateTBE;
+    forward_eviction_to_cpu;
+    kk_deallocateL1CacheBlock;
+    l_popForwardQueue;
+  }
+
   transition(MM, Fwd_GETX, I) {
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
@@ -1335,7 +1356,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }  */
 
   transition(M, Fwd_GETS, MS) {
-    e_sendData;
+    e_sendDataFromOwner;
     i_allocateTBE;
     dd_issuePUTData;
     l_popForwardQueue;
@@ -1395,12 +1416,14 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition(SM, Fwd_GETS) {
     e_sendData;
+    //e_sendDataFromOwner;
     dd_issuePUTData;
     l_popForwardQueue;
   }
 
   transition(SM, Glo_GETS) {
-    e_sendData;
+    //e_sendData;
+    e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
@@ -1433,7 +1456,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(OM, Glo_GETS) {
-    e_sendData;
+    //e_sendData;
+    e_sendDataFromOwner;
     l_popForwardQueue;
   }
 
@@ -1515,7 +1539,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }  */
 
   transition(MI, Fwd_GETS) {
-    q_sendDataFromTBEToCache;
+    q_sendDataFromTBEToCacheFromOwner;
     dd_issuePUTData;
     l_popForwardQueue;
   }
@@ -1537,7 +1561,13 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition({SI, OI}, {Fwd_GETS, Glo_GETS}) {
+  transition({OI}, {Fwd_GETS, Glo_GETS}) {
+    q_sendDataFromTBEToCacheFromOwner;
+    dd_issuePUTData;
+    l_popForwardQueue;
+  }
+
+  transition({SI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCache;
     dd_issuePUTData;
     l_popForwardQueue;
