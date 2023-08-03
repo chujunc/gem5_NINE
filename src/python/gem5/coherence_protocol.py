@@ -39,8 +39,9 @@ class CoherenceProtocol(Enum):
     MESI_TWO_LEVEL = 5
     MOESI_CMP_DIRECTORY = 6
     MOESI_NINE = 7
-    MOESI_CMP_TOKEN = 8
-    MOESI_AMD_BASE = 9
-    MI_EXAMPLE = 10
-    GPU_VIPER = 11
-    CHI = 12
+    MOESI_NINE_SF = 8
+    MOESI_CMP_TOKEN = 9
+    MOESI_AMD_BASE = 10
+    MI_EXAMPLE = 11
+    GPU_VIPER = 12
+    CHI = 13

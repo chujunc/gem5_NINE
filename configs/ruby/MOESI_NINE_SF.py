@@ -80,8 +80,8 @@ def create_system(
     options, full_system, system, dma_ports, bootmem, ruby_system, cpus
 ):
 
-    if buildEnv["PROTOCOL"] != "MOESI_NINE":
-        panic("This script requires the MOESI_NINE protocol to be built.")
+    if buildEnv["PROTOCOL"] != "MOESI_NINE_SF":
+        panic("This script requires the MOESI_NINE_SF protocol to be built.")
 
     cpu_sequencers = []
 
@@ -108,6 +108,7 @@ def create_system(
             size=options.l1i_size,
             assoc=options.l1i_assoc,
             start_index_bit=block_size_bits,
+            #replacement_policy=LRURP(),
             is_icache=True,
         )
         l1d_cache = L1Cache(

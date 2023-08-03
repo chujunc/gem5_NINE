@@ -163,6 +163,13 @@ segvHandler(int sigtype)
 {
     STATIC_ERR("gem5 has encountered a segmentation fault!\n\n");
     printf("the segmentation fault type is %d\n\n",sigtype);
+    const EventQueue *const eq(curEventQueue());
+    if (eq) {
+        ccprintf(std::cerr, "Program aborted at tick %llu\n",
+                eq->getCurTick());
+    } else {
+        STATIC_ERR("Program aborted\n\n");
+    }
     print_backtrace();
     raiseFatalSignal(SIGSEGV);
 }

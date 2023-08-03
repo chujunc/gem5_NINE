@@ -65,11 +65,6 @@ class L1Cache(RubyCache):
 class L2Cache(RubyCache):
     dataAccessLatency = 2
     tagAccessLatency = 2
-    
-class ProbeFilterMemory(RubyCache):
-    dataAccessLatency = 2
-    tagAccessLatency = 2
-
 
 
 def define_options(parser):
@@ -108,7 +103,6 @@ def create_system(
             size=options.l1i_size,
             assoc=options.l1i_assoc,
             start_index_bit=block_size_bits,
-            #replacement_policy=LRURP(),
             is_icache=True,
         )
         l1d_cache = L1Cache(
@@ -185,17 +179,10 @@ def create_system(
             assoc=options.l2_assoc,
             start_index_bit=block_size_bits + l2_bits,
         )
-        
-        sf = ProbeFilterMemory(
-            size=options.l2_size,
-            assoc=options.l2_assoc,
-            start_index_bit=block_size_bits + l2_bits,
-        )
 
         l2_cntrl = L2Cache_Controller(
             version=i,
             L2cache=l2_cache,
-            ProbeFilterMemory = sf,
             transitions_per_cycle=options.ports,
             ruby_system=ruby_system,
             addr_ranges=l2_addr_ranges[i],

@@ -39,6 +39,7 @@ main.Append(ALL_PROTOCOLS=[
     'MI_example',
     'MOESI_CMP_directory',
     'MOESI_NINE',
+    'MOESI_NINE_SF',
     'MOESI_CMP_token',
     'MOESI_hammer',
     'Garnet_standalone',

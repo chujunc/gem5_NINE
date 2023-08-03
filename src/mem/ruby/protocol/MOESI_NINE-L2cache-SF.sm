@@ -160,6 +160,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
     //SF
     ILX_SF, AccessPermission:Busy, desc="Blocked, waiting for L1 ack";
+    ILS_SF, AccessPermission:Busy, desc="Blocked, waiting for L1 ack";
   }
 
   // EVENTS
@@ -218,12 +219,12 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
 
-  structure(DirEntry, desc="...", interface="AbstractCacheEntry", main="false") {
+  /* structure(DirEntry, desc="...", interface="AbstractCacheEntry", main="false") {
     NetDest Sharers,            desc="Set of the internal processors that want the block in shared state";
     MachineID Owner,   desc="ID of the L1 cache to forward the block to once we get a response";
     bool OwnerValid, default="false", desc="true if Owner means something";
     State DirState,        desc="directory state";
-  }
+  } */
 
   // TBE fields
   structure(TBE, desc="...") {
@@ -316,19 +317,23 @@ machine(MachineType:L2Cache, "Token protocol")
     }
   }
 
-  void copyCacheStateToDir(Entry cache_entry, Addr addr) {
-    //Entry dir_entry := getDirEntry(addr);
+  void copyCacheStateToDirAndAllocate(Entry cache_entry, Addr addr) {  // not allocate dir_entry
     //DPRINTF(ProtocolTrace, "%s, %s, %#x\n", cache_entry.CacheState, dir_entry.CacheState, addr);
-    assert(ProbeFilterMemory.isTagPresent(addr) == false);
+    //assert(ProbeFilterMemory.isTagPresent(addr) == false);
     assert(is_valid(cache_entry));
     Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
     //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
     Entry dir_entry := getDirEntry(addr);
     dir_entry.CacheState := cache_entry.CacheState;
-    //dir_entry.Sharers := cache_entry.Sharers;
-    //dir_entry.Owner := cache_entry.Owner;
-    //dir_entry.OwnerValid := cache_entry.OwnerValid;
+  }
 
+  void copyCacheStateToDir(Entry cache_entry, Addr addr) {  // have already allocated dir_entry
+    //Entry dir_entry := getDirEntry(addr);
+    //DPRINTF(ProtocolTrace, "%s, %s, %#x\n", cache_entry.CacheState, dir_entry.CacheState, addr);
+    //assert(ProbeFilterMemory.isTagPresent(addr) == false);
+    assert(is_valid(cache_entry));
+    Entry dir_entry := getDirEntry(addr);
+    dir_entry.CacheState := cache_entry.CacheState;
   }
 
   /* void copyDirToCache(Entry cache_entry, Addr addr) {
@@ -352,11 +357,10 @@ machine(MachineType:L2Cache, "Token protocol")
            (dir_entry.OwnerValid == false);
   }
 
-  void recordLocalSharerInDir(Entry cache_entry, Addr addr, MachineID shar_id) {
+  void recordLocalSharerInDir(Addr addr, MachineID shar_id) {
     
       if (ProbeFilterMemory.isTagPresent(addr) == false) {
         Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
-        //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
         Entry dir_entry := getDirEntry(addr);
         dir_entry.Sharers.clear();
         dir_entry.OwnerValid := false;
@@ -365,13 +369,13 @@ machine(MachineType:L2Cache, "Token protocol")
       dir_entry.Sharers.add(shar_id);
   }
 
-  void recordNewLocalExclusiveInDir(Entry cache_entry, Addr addr, MachineID exc_id) {
+  void recordNewLocalExclusiveInDir(Addr addr, MachineID exc_id) {
 
     
       if (ProbeFilterMemory.isTagPresent(addr) == false) {
         Entry entry := static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
-        //static_cast(Entry, "pointer", ProbeFilterMemory.allocate(addr, new Entry));
       }
+      assert(ProbeFilterMemory.isTagPresent(addr));
       Entry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.clear();
       dir_entry.OwnerValid := true;
@@ -380,41 +384,46 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   void removeAllLocalSharersFromDir(Entry cache_entry, Addr addr) {
+      if (is_valid(cache_entry)) {
+      cache_entry.Sharers.clear();
+      cache_entry.OwnerValid := false;
+    }
       Entry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.clear();
       dir_entry.OwnerValid := false;
   }
 
-  void removeSharerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
+  void removeSharerFromDir(Addr addr, MachineID sender) {
     
       Entry dir_entry := getDirEntry(addr);
       dir_entry.Sharers.remove(sender);
     
   }
 
-  void removeOwnerFromDir(Entry cache_entry, Addr addr, MachineID sender) {
+  void removeOwnerFromDir(Addr addr, MachineID sender) {
     
       Entry dir_entry := getDirEntry(addr);
       dir_entry.OwnerValid := false;
     
   }
 
-  bool isLocalSharer(Entry cache_entry, Addr addr, MachineID shar_id) {
+  bool isLocalSharer(Addr addr, MachineID shar_id) {
     
       Entry dir_entry := getDirEntry(addr);
       return dir_entry.Sharers.isElement(shar_id);
     
   }
 
-  NetDest getLocalSharers(Entry cache_entry, Addr addr) {
+  NetDest getLocalSharers(Addr addr) {
     
       Entry dir_entry := getDirEntry(addr);
       return dir_entry.Sharers;
   }
 
-  MachineID getLocalOwner(Entry cache_entry, Addr addr) {
+  MachineID getLocalOwner(Addr addr) {
     
       Entry dir_entry := getDirEntry(addr);
+      assert(dir_entry.OwnerValid);
       return dir_entry.Owner;
   }
 
@@ -424,19 +433,19 @@ machine(MachineType:L2Cache, "Token protocol")
       return dir_entry.Owner;
   }
 
-  int countLocalSharers(Entry cache_entry, Addr addr) {
+  int countLocalSharers(Addr addr) {
     
       Entry dir_entry := getDirEntry(addr);
       return dir_entry.Sharers.count();
   }
 
-  bool isLocalOwnerValid(Entry cache_entry, Addr addr) {
+  bool isLocalOwnerValid(Addr addr) {
     
       Entry dir_entry := getDirEntry(addr);
       return dir_entry.OwnerValid;
   }
 
-  int countLocalSharersExceptRequestor(Entry cache_entry, Addr addr, MachineID requestor) {
+  int countLocalSharersExceptRequestor(Addr addr, MachineID requestor) {
     
       Entry dir_entry := getDirEntry(addr);
       if (dir_entry.Sharers.isElement(requestor)) {
@@ -683,17 +692,16 @@ machine(MachineType:L2Cache, "Token protocol")
       peek(L1requestNetwork_in, RequestMsg) {
         assert(in_msg.Destination.isElement(machineID));
         if (in_msg.Type == CoherenceRequestType:GETX) {   //cjc_update8
-          Entry cache_entry := getDirEntry(in_msg.addr);
-          if (is_invalid(cache_entry) &&
-                   ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
+          Entry dir_entry := getDirEntry(in_msg.addr);
+          if (is_invalid(dir_entry) && ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
             Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
-            Entry cache_entry := getCacheEntry(victimSF);
-            if (is_invalid(cache_entry) && L2cache.cacheAvail(victimSF) == false) {
+            Entry cache_entry2 := getCacheEntry(victimSF);
+            if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF) == false) {
               Addr victim := L2cache.cacheProbe(victimSF);
               trigger(Event:L2_Replacement, victim, getCacheEntry(victim), TBEs[victim]);
             }
             else {
-              trigger(Event:SF_Replacement,victimSF, getDirEntry(victimSF), TBEs[victimSF]);
+              trigger(Event:SF_Replacement,victimSF, getCacheEntry(victimSF), TBEs[victimSF]);
             }
           }
           else {
@@ -701,17 +709,17 @@ machine(MachineType:L2Cache, "Token protocol")
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
           }
         } else if (in_msg.Type == CoherenceRequestType:GETS) {
-          Entry cache_entry := getDirEntry(in_msg.addr);
-          if (is_invalid(cache_entry) &&
+          Entry dir_entry := getDirEntry(in_msg.addr);
+          if (is_invalid(dir_entry) &&
                    ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
             Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
-            Entry cache_entry := getCacheEntry(victimSF);
-            if (is_invalid(cache_entry) && L2cache.cacheAvail(victimSF) == false) {
+            Entry cache_entry2 := getCacheEntry(victimSF);
+            if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF) == false) {
               Addr victim := L2cache.cacheProbe(victimSF);
               trigger(Event:L2_Replacement, victim, getCacheEntry(victim), TBEs[victim]);
             }
             else {
-              trigger(Event:SF_Replacement,victimSF, getDirEntry(victimSF), TBEs[victimSF]);
+              trigger(Event:SF_Replacement,victimSF, getCacheEntry(victimSF), TBEs[victimSF]);
             }
           }
           else {
@@ -737,7 +745,8 @@ machine(MachineType:L2Cache, "Token protocol")
             trigger(Event:L1_PUTS, in_msg.addr,
                     cache_entry, TBEs[in_msg.addr]);
           }
-        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_DIRTY_DATA) {
+        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_DIRTY_DATA || 
+        in_msg.Type == CoherenceRequestType:WRITEBACK_DIRTY_DATA_SF) {
           Entry cache_entry := getCacheEntry(in_msg.addr);
           if (is_invalid(cache_entry) &&
                    L2cache.cacheAvail(in_msg.addr) == false) {
@@ -749,7 +758,8 @@ machine(MachineType:L2Cache, "Token protocol")
             trigger(Event:L1_WBDIRTYDATA, in_msg.addr,
                     cache_entry, TBEs[in_msg.addr]);
           }
-        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_CLEAN_DATA) {
+        } else if (in_msg.Type == CoherenceRequestType:WRITEBACK_CLEAN_DATA || 
+        in_msg.Type == CoherenceRequestType:WRITEBACK_CLEAN_DATA_SF ) {
           Entry cache_entry := getCacheEntry(in_msg.addr);
           if (is_invalid(cache_entry) &&
                    L2cache.cacheAvail(in_msg.addr) == false) {
@@ -1115,13 +1125,13 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(ee_sendLocalInv, "\ee", desc="Send local invalidates") {
     assert(is_valid(tbe));
-    tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+    tbe.NumIntPendingAcks := countLocalSharers(address);
     DPRINTF(RubySlicc, "Address: %#x, Local Sharers: %s, Pending Acks: %d\n",
-            address, getLocalSharers(cache_entry, address),
+            address, getLocalSharers(address),
             tbe.NumIntPendingAcks);
-    if (isLocalOwnerValid(cache_entry, address)) {
+    if (isLocalOwnerValid(address)) {
       tbe.NumIntPendingAcks := tbe.NumIntPendingAcks + 1;
-      DPRINTF(RubySlicc, "%s\n", getLocalOwner(cache_entry, address));
+      DPRINTF(RubySlicc, "%s\n", getLocalOwner(address));
     }
 
     enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
@@ -1129,10 +1139,10 @@ machine(MachineType:L2Cache, "Token protocol")
       out_msg.Type := CoherenceRequestType:INV;
       out_msg.Requestor := machineID;
       out_msg.RequestorMachine := MachineType:L2Cache;
-      out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
-      if (isLocalOwnerValid(cache_entry, address))
+      out_msg.Destination.addNetDest(getLocalSharers(address));
+      if (isLocalOwnerValid(address))
       {
-        out_msg.Destination.add(getLocalOwner(cache_entry, address));
+        out_msg.Destination.add(getLocalOwner(address));
       }
       out_msg.MessageSize := MessageSizeType:Invalidate_Control;
     }
@@ -1142,15 +1152,15 @@ machine(MachineType:L2Cache, "Token protocol")
 
     // assert(countLocalSharers(address)  > 0);
     assert(is_valid(tbe));
-    tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+    tbe.NumIntPendingAcks := countLocalSharers(address);
 
-    if (countLocalSharers(cache_entry, address) > 0) {
+    if (countLocalSharers(address) > 0) {
       enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
         out_msg.addr := address;
         out_msg.Type := CoherenceRequestType:INV;
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+        out_msg.Destination.addNetDest(getLocalSharers(address));
         out_msg.MessageSize := MessageSizeType:Invalidate_Control;
       }
     }
@@ -1165,16 +1175,16 @@ machine(MachineType:L2Cache, "Token protocol")
       peek(L1requestNetwork_in, RequestMsg) {
 
 //         assert(countLocalSharers(address) > 0);
-        if (countLocalSharers(cache_entry, address) == 0) {
+        if (countLocalSharers(address) == 0) {
           tbe.NumIntPendingAcks := 0;
         }
         else {
 
-          if (isLocalSharer(cache_entry, address, in_msg.Requestor)) {
-            tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address) - 1;
+          if (isLocalSharer(address, in_msg.Requestor)) {
+            tbe.NumIntPendingAcks := countLocalSharers(address) - 1;
           }
           else {
-            tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+            tbe.NumIntPendingAcks := countLocalSharers(address);
           }
 
           enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
@@ -1182,7 +1192,7 @@ machine(MachineType:L2Cache, "Token protocol")
             out_msg.Type := CoherenceRequestType:INV;
             out_msg.Requestor := in_msg.Requestor;
             out_msg.RequestorMachine := MachineType:L1Cache;
-            out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+            out_msg.Destination.addNetDest(getLocalSharers(address));
             out_msg.Destination.remove(in_msg.Requestor);
             out_msg.MessageSize := MessageSizeType:Invalidate_Control;
           }
@@ -1205,11 +1215,33 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(ee_sendLocalInv1bySF, "\ee1sf", desc="Send local invalidates") {
       enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        Entry dir_entry := getDirEntry(address);
         out_msg.addr := address;
         out_msg.Type := CoherenceRequestType:INV_SF;
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.add(getLocalOwnerbySF(cache_entry, address));
+        out_msg.Destination.addNetDest(getLocalSharers(address));
+        if (isLocalOwnerValid(address))
+        {
+          out_msg.Destination.add(getLocalOwner(address));
+        }
+        out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+      }
+    
+  }
+
+  action(ee_sendLocalInv1bySFandNoNeedData, "\ee1sfnd", desc="Send local invalidates and no data") {
+      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+        Entry dir_entry := getDirEntry(address);
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:INV_SF_ND;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L2Cache;
+        out_msg.Destination.addNetDest(getLocalSharers(address));
+        if (isLocalOwnerValid(address))
+        {
+          out_msg.Destination.add(getLocalOwner(address));
+        }
         out_msg.MessageSize := MessageSizeType:Invalidate_Control;
       }
     
@@ -1217,15 +1249,15 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(ee_issueLocalInvExceptL1RequestorInTBE, "\eeeeee", desc="Send local invalidates to sharers if they exist") {
     assert(is_valid(tbe));
-    if (countLocalSharers(cache_entry, address) == 0) {
+    if (countLocalSharers(address) == 0) {
       tbe.NumIntPendingAcks := 0;
     }
     else {
-      if (isLocalSharer(cache_entry, address, tbe.L1_GetX_ID)) {
-        tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address) - 1;
+      if (isLocalSharer(address, tbe.L1_GetX_ID)) {
+        tbe.NumIntPendingAcks := countLocalSharers(address) - 1;
       }
       else {
-        tbe.NumIntPendingAcks := countLocalSharers(cache_entry, address);
+        tbe.NumIntPendingAcks := countLocalSharers(address);
       }
     }
     enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
@@ -1233,7 +1265,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := CoherenceRequestType:INV;
         out_msg.Requestor := tbe.L1_GetX_ID;
         out_msg.RequestorMachine := MachineType:L1Cache;
-        out_msg.Destination.addNetDest(getLocalSharers(cache_entry, address));
+        out_msg.Destination.addNetDest(getLocalSharers(address));
         out_msg.Destination.remove(tbe.L1_GetX_ID);
         out_msg.MessageSize := MessageSizeType:Invalidate_Control;
     }
@@ -1266,19 +1298,19 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(g_recordLocalSharer, "g", desc="Record new local sharer from unblock message") {
     peek(responseNetwork_in, ResponseMsg) {
-      recordLocalSharerInDir(cache_entry, in_msg.addr, in_msg.Sender);
+      recordLocalSharerInDir(in_msg.addr, in_msg.Sender);
     }
   }
 
   action(g_recordLocalExclusive, "\g", desc="Record new local exclusive sharer from unblock message") {
     peek(responseNetwork_in, ResponseMsg) {
-      recordNewLocalExclusiveInDir(cache_entry, address, in_msg.Sender);
+      recordNewLocalExclusiveInDir(address, in_msg.Sender);
     }
   }
 
   action(g_recordLocalSharerFromL1request, "\no", desc="Record new local owner from unblock message") {  //cjc_update4
     peek(L1requestNetwork_in, RequestMsg) {
-      recordLocalSharerInDir(cache_entry, in_msg.addr, in_msg.Requestor);
+      recordLocalSharerInDir(in_msg.addr, in_msg.Requestor);
     }
   }
 
@@ -1288,26 +1320,26 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(gg_clearSharerFromL1Response, "\gg", desc="Clear sharer from L1 response queue") {
     peek(responseNetwork_in, ResponseMsg) {
-      removeSharerFromDir(cache_entry, in_msg.addr, in_msg.Sender);
+      removeSharerFromDir(in_msg.addr, in_msg.Sender);
     }
   }
 
   action(gg_clearSharerFromL1Request, "clsl1r", desc="Clear sharer from L1 request queue") {
     peek(L1requestNetwork_in, RequestMsg) {
-      removeSharerFromDir(cache_entry, in_msg.addr, in_msg.Requestor);
+      removeSharerFromDir(in_msg.addr, in_msg.Requestor);
     }
   }
 
   action(gg_clearOwnerFromL1Request, "clol1r", desc="Clear owner from L1 request queue") {
     peek(L1requestNetwork_in, RequestMsg) {
-      removeOwnerFromDir(cache_entry, in_msg.addr, in_msg.Requestor);
+      removeOwnerFromDir(in_msg.addr, in_msg.Requestor);
     }
   }
 
   action(h_countLocalSharersExceptRequestor, "h", desc="counts number of acks needed for L1 GETX") {
     peek(L1requestNetwork_in, RequestMsg) {
       assert(is_valid(tbe));
-      tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(cache_entry, address, in_msg.Requestor);
+      tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(address, in_msg.Requestor);
     }
   }
 
@@ -1325,7 +1357,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(hh_countLocalSharersExceptL1GETXRequestorInTBE, "hh", desc="counts number of acks needed for L1 GETX") {
     assert(is_valid(tbe));
-    tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(cache_entry, address, tbe.L1_GetX_ID);
+    tbe.Local_GETX_IntAcks := countLocalSharersExceptRequestor(address, tbe.L1_GetX_ID);
   }
 
   action(i_copyDataToTBE, "\i", desc="Copy data from response queue to TBE") {
@@ -1360,7 +1392,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := in_msg.Type;
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Destination.add(getLocalOwner(in_msg.addr));
         out_msg.Type := in_msg.Type;
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
         out_msg.Acks := 0 - 1;
@@ -1375,7 +1407,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := CoherenceRequestType:GLO_GETS;
         out_msg.Requestor := machineID;
         out_msg.RequestorMachine := MachineType:L2Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Destination.add(getLocalOwner(in_msg.addr));
         out_msg.Type := in_msg.Type;
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
         out_msg.Acks := 0 - 1;
@@ -1390,7 +1422,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := in_msg.Type;
         out_msg.Requestor := in_msg.Requestor;
         out_msg.RequestorMachine := in_msg.RequestorMachine;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Destination.add(getLocalOwner(in_msg.addr));
         out_msg.Type := in_msg.Type;
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
         out_msg.Acks := 0 - 1;
@@ -1408,6 +1440,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.RequestorMachine := MachineType:L1Cache;
         // should randomize this so one node doesn't get abused more than others
         Entry dir_entry := getDirEntry(in_msg.addr);
+        assert(is_valid(dir_entry));
         out_msg.Destination.add(dir_entry.Sharers.smallestElement(MachineType:L1Cache));
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
       }
@@ -1436,7 +1469,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := CoherenceRequestType:GETX;
         out_msg.Requestor := in_msg.Requestor;
         out_msg.RequestorMachine := MachineType:L1Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Destination.add(getLocalOwner(in_msg.addr));
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
         out_msg.Acks := 1;
       }
@@ -1450,7 +1483,7 @@ machine(MachineType:L2Cache, "Token protocol")
         out_msg.Type := CoherenceRequestType:GETS;
         out_msg.Requestor := in_msg.Requestor;
         out_msg.RequestorMachine := MachineType:L1Cache;
-        out_msg.Destination.add(getLocalOwner(cache_entry, in_msg.addr));
+        out_msg.Destination.add(getLocalOwner(in_msg.addr));
         out_msg.MessageSize := MessageSizeType:Forwarded_Control;
       }
     }
@@ -1596,9 +1629,17 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   action( r_SFsetMRU, "\rrrr", desc="manually set the MRU bit for cache line" ) {
-    if(is_valid(cache_entry)) {
-      ProbeFilterMemory.setMRU(address);
+    Entry dir_entry := getDirEntry(address);
+    if(is_valid(dir_entry)){
+      DPRINTF(ProtocolTrace, "%s\n", dir_entry.CacheState);
     }
+    Entry cache_entrydb := getCacheEntry(address);
+    if(is_valid(cache_entrydb)){
+      DPRINTF(ProtocolTrace, "%s\n", cache_entrydb.CacheState);
+    }
+    DPRINTF(ProtocolTrace, "%#x\n", address);
+    assert(is_valid(dir_entry));
+    ProbeFilterMemory.setMRU(address);
   }
 
   action( s_recordGetXL1ID, "ss", desc="record local GETX requestor") {
@@ -1676,6 +1717,10 @@ machine(MachineType:L2Cache, "Token protocol")
 
   action(uu_profileHit, "\uh", desc="Profile the demand hit") {
     L2cache.profileDemandHit();
+  }
+
+  action(y_copyCacheStateToDirAndAllocate, "ya", desc="Copy cache state to directory state") {
+    copyCacheStateToDirAndAllocate(cache_entry, address);
   }
 
   action(y_copyCacheStateToDir, "y", desc="Copy cache state to directory state") {
@@ -1756,7 +1801,7 @@ machine(MachineType:L2Cache, "Token protocol")
     zz_recycleL1RequestQueue;
   }
 
-  transition({ILX_SF}, SF_Replacement) {
+  transition({ILX_SF, ILS_SF}, SF_Replacement) {
     st_stallAndWaitL1RequestQueue;
   }
 
@@ -1985,7 +2030,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(O, Fwd_GETX, I) {
     dd_sendDataToFwdGETX;
-    checkCacheNoSharersNoOwner;
+    //checkCacheNoSharersNoOwner;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
   }
@@ -2015,14 +2060,14 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(M, Fwd_GETX, I) {
     dd_sendDataToFwdGETX;
-    checkCacheNoSharersNoOwner;
+    //checkCacheNoSharersNoOwner;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
   }
 
   transition(M, Fwd_GETS, I) {
      dd_sendExclusiveDataToFwdGETS;
-     checkCacheNoSharersNoOwner;
+     //checkCacheNoSharersNoOwner;
      rr_deallocateL2CacheBlock;
      m_popRequestQueue;
   }
@@ -2111,7 +2156,7 @@ machine(MachineType:L2Cache, "Token protocol")
     t_recordFwdXID;
     e_sendAck;
     s_deallocateTBE;
-    checkCacheNoSharersNoOwner;
+    //checkCacheNoSharersNoOwner;
     rr_deallocateL2CacheBlock;
     m_popRequestQueue;
   }
@@ -2129,7 +2174,7 @@ machine(MachineType:L2Cache, "Token protocol")
     d_sendDataToL1GETX;
     //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
-    r_setMRU; //whether need?
+    r_SFsetMRU; //whether need?
     rr_deallocateL2CacheBlock;
     uu_profileHit; 
     o_popL1RequestQueue;
@@ -2155,6 +2200,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(OLSX, L1_GETS, OLSXS) {
     d_sendDataToL1GETS;
     r_setMRU;
+    r_SFsetMRU;
     uu_profileHit;
     o_popL1RequestQueue;
   }
@@ -2181,6 +2227,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition({ILX, ILOX}, L1_GETX, IFLOXXGETX) {
     kk_forwardLocalGETXToLocalExclusive;
+    r_SFsetMRU;
     e_sendAckToL1Requestor;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2199,8 +2246,34 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition({ILS}, SF_Replacement, ILS_SF) {
+    ee_sendLocalInv1bySF;
+  }
+
+  transition(ILS_SF, L1_WBCLEANDATA, S) {
+    gg_clearLocalSharers;
+    vv_allocateL2CacheBlock;
+    removeFromDir;
+    u_writeCleanDataToCache;
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition({SLS}, SF_Replacement, S) {
+    ee_sendLocalInv1bySFandNoNeedData;
+    gg_clearLocalSharers;
+    removeFromDir;
+    wa_wakeUpDependents;
+  }
+
+  transition({S, SLS, SS}, L1_WBCLEANDATA) {
+    o_popL1RequestQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(ILX, L1_GETS, IFLOXX) {
     kk_forwardLocalGETSToLocalOwner;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2274,6 +2347,7 @@ machine(MachineType:L2Cache, "Token protocol")
   //transition(ILS, L1_GETS, IFLS) begin   //cjc_update3
   transition(ILS, L1_GETS, IFLS) {
     k_forwardLocalGETSToLocalSharer;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2321,6 +2395,7 @@ machine(MachineType:L2Cache, "Token protocol")
   // v5 begin   cjc_update5
   transition(ILOSX, L1_GETS, IFLOSX) {
     kk_forwardLocalGETSToLocalOwner;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2370,6 +2445,7 @@ machine(MachineType:L2Cache, "Token protocol")
   //----------------------------------
   transition({ILOS, ILO}, L1_GETS, IFLO) {
     kk_forwardLocalGETSToLocalOwner;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2419,6 +2495,7 @@ machine(MachineType:L2Cache, "Token protocol")
   //------------------------------------
   transition(ILOX, L1_GETS, IFLOX) {
     kk_forwardLocalGETSToLocalOwner;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2486,6 +2563,7 @@ machine(MachineType:L2Cache, "Token protocol")
     h_countLocalSharersExceptRequestor;
     ee_issueLocalInvExceptL1Requestor;
     k_forwardLocalGETXToLocalOwner;
+    r_SFsetMRU;
     e_sendAckToL1RequestorFromTBE;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2525,7 +2603,7 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
-    y_copyCacheStateToDir;
+    y_copyCacheStateToDirAndAllocate;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2537,6 +2615,7 @@ machine(MachineType:L2Cache, "Token protocol")
     a_issueGETX;
     // count number of INVs (just sharers?) needed that doesn't include requestor
     h_countLocalSharersExceptRequestor;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2585,6 +2664,7 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2608,6 +2688,7 @@ machine(MachineType:L2Cache, "Token protocol")
     // COPY DATA FROM CACHE TO TBE (happens during i_allocateTBE)
     //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2631,6 +2712,7 @@ machine(MachineType:L2Cache, "Token protocol")
     a_issueGETX;
     // the following, of course, returns 0 sharers but do anyways for consistency
     h_countLocalSharersExceptRequestor;
+    r_SFsetMRU;
     uu_profileMiss;
     o_popL1RequestQueue;
   }
@@ -2777,7 +2859,6 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IGMOU, Exclusive_Unblock, ILX) {
     g_recordLocalExclusive;
-    r_SFsetMRU;
     f_sendExclusiveUnblock;
     s_deallocateTBE;
     n_popResponseQueue;
@@ -2794,6 +2875,7 @@ machine(MachineType:L2Cache, "Token protocol")
     // issue INVs to everyone except requestor, send inv when get data
     //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
+    r_SFsetMRU;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2803,6 +2885,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(SLS, L1_GETS, SLSS ) {
     d_sendDataToL1GETS;
     r_setMRU;
+    r_SFsetMRU;
     uu_profileHit;
     o_popL1RequestQueue;
   }
@@ -2824,7 +2907,7 @@ machine(MachineType:L2Cache, "Token protocol")
     i_allocateTBE;
     s_recordGetXL1ID;
     a_issueGETX;
-    y_copyCacheStateToDir;
+    y_copyCacheStateToDirAndAllocate;
     rr_deallocateL2CacheBlock;
     uu_profileMiss;
     o_popL1RequestQueue;
@@ -2833,6 +2916,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(OLS, L1_GETS, OLSS) {
     d_sendDataToL1GETS;
     r_setMRU;
+    r_SFsetMRU;
     uu_profileHit;
     o_popL1RequestQueue;
   }
@@ -2870,7 +2954,7 @@ machine(MachineType:L2Cache, "Token protocol")
     // should count 0 of course
     h_countLocalSharersExceptRequestorMM;
     d_sendDataToL1GETX;
-    y_copyCacheStateToDir;
+    y_copyCacheStateToDirAndAllocate;
     rr_deallocateL2CacheBlock;
     s_deallocateTBE;
     uu_profileHit;
@@ -2888,6 +2972,7 @@ machine(MachineType:L2Cache, "Token protocol")
     // should count 0 of course
     h_countLocalSharersExceptRequestorMM;
     d_sendDataToL1GETX;
+    y_copyCacheStateToDirAndAllocate;
     r_setMRU;
     s_deallocateTBE;
     uu_profileHit;
@@ -2897,6 +2982,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(S, L1_GETS, SS) {
     d_sendDataToL1GETS;
     r_setMRU;
+    y_copyCacheStateToDirAndAllocate;
     uu_profileHit;
     o_popL1RequestQueue;
   }
@@ -2910,6 +2996,7 @@ machine(MachineType:L2Cache, "Token protocol")
   transition(O, L1_GETS, OO) {
     d_sendDataToL1GETS;
     r_setMRU;
+    y_copyCacheStateToDirAndAllocate;
     uu_profileHit;
     o_popL1RequestQueue;
   }
@@ -3020,7 +3107,7 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(SLS, L1_PUTS_only, S) {  //cjc_update2
-    //gg_clearSharerFromL1Request;
+    gg_clearSharerFromL1Request;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3044,14 +3131,14 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
    transition(OLS, L1_PUTS_only, O) {  //cjc_update2
-    //gg_clearSharerFromL1Request;
+    gg_clearSharerFromL1Request;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
   transition(OLSX, L1_PUTS_only, M) {  //cjc_update2
-    //gg_clearSharerFromL1Request;
+    gg_clearSharerFromL1Request;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3254,7 +3341,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   // L2 WRITEBACKS
   transition(S, L2_Replacement, I) {
-    checkCacheNoSharersNoOwner;
+    //checkCacheNoSharersNoOwner;
     rr_deallocateL2CacheBlock;
   }
 
