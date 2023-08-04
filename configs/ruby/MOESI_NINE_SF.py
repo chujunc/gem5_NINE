@@ -187,8 +187,8 @@ def create_system(
         )
         
         sf = ProbeFilterMemory(
-            size=options.l2_size,
-            assoc=options.l2_assoc,
+            size=options.sf_size,
+            assoc=options.sf_assoc,
             start_index_bit=block_size_bits + l2_bits,
         )
 
