@@ -1314,6 +1314,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
+  transition({SI, II}, Inv_sf_nd, I) {
+    s_deallocateTBE;
+    n_popResponseQueue;
+  }
+
   transition({MI, OI}, Writeback_Nack, OI) {
     // FIXME: This might cause deadlock by re-using the writeback
     // channel, we should handle this case differently.
