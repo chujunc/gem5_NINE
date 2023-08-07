@@ -1332,9 +1332,65 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
+  transition(SI, {Inv_sf}) {  
+    l_popForwardQueue;
+  } 
+
+  transition({MI, OI}, {Inv_sf}) {  
+    l_popForwardQueue;
+  }
+
+  transition({SM, OM}, Inv_sf, IM) {
+    qq_sendWBDataFromTBEToL2CausedbySF;
+    forward_eviction_to_cpu;
+    l_popForwardQueue;
+  } 
+
+  transition({SS, MS}, Inv_sf, I) {
+    qq_sendWBDataFromTBEToL2CausedbySF;
+    s_deallocateTBE;
+    forward_eviction_to_cpu;
+    kk_deallocateL1CacheBlock;
+    l_popForwardQueue;
+  }
+
+  transition(I, Inv_sf) {
+    l_popForwardQueue;
+  }
+
+  transition(I, {Writeback_Ack_Data, Writeback_drop_data}) {  //cjc_update3
+    s_deallocateTBE;
+    n_popResponseQueue;
+  }  
+
+  //        I, S, M, MM, SM, OM, SI, OI, SS, MS, MI, II
+  //   Inv_sf: S, M, MM, SM, OM, SI, OI, SS, MS, MI, I
+  //Inv_sf_nd: S, X,  X, SM,  X, SI, OI, SS,  X,  X, II, I
+
   transition(S, Inv_sf_nd, I) {
     forward_eviction_to_cpu;
     kk_deallocateL1CacheBlock;
+    l_popForwardQueue;
+  }
+
+  transition({SM}, Inv_sf_nd, IM) {
+    forward_eviction_to_cpu;
+    l_popForwardQueue;
+  }
+
+  transition({OI, SI, II}, Inv_sf_nd, I) {
+    s_deallocateTBE;
+    l_popForwardQueue;
+  }
+
+  transition({SS}, Inv_sf_nd, I) {
+    forward_eviction_to_cpu;
+    kk_deallocateL1CacheBlock;
+    s_deallocateTBE;
+    l_popForwardQueue;
+  }
+
+  transition(I, Inv_sf_nd) {
     l_popForwardQueue;
   }
 
@@ -1641,15 +1697,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     g_sendUnblock;
     s_deallocateTBE;
     n_popResponseQueue;
-  }
-
-  transition({SI, II}, Inv_sf_nd, I) {
-    s_deallocateTBE;
-    l_popForwardQueue;
-  }
-
-  transition(I, Inv_sf_nd) {
-    l_popForwardQueue;
   }
 
   transition({MI, OI}, Writeback_Nack, OI) {

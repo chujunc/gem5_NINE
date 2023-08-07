@@ -1729,6 +1729,14 @@ machine(MachineType:L2Cache, "Token protocol")
     L2cache.profileDemandHit();
   }
 
+  action(uu_SFMiss, "\umsf", desc="Profile the demand miss") {
+    ProbeFilterMemory.profileDemandMiss();
+  }
+
+  action(uu_SFHit, "\uhsf", desc="Profile the demand hit") {
+    ProbeFilterMemory.profileDemandHit();
+  }
+
   action(y_copyCacheStateToDirAndAllocate, "ya", desc="Copy cache state to directory state") {
     copyCacheStateToDirAndAllocate(cache_entry, address);
   }
@@ -2243,6 +2251,7 @@ machine(MachineType:L2Cache, "Token protocol")
     r_SFsetMRU;
     e_sendAckToL1Requestor;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2250,7 +2259,7 @@ machine(MachineType:L2Cache, "Token protocol")
     ee_sendLocalInv1bySF;
   }
 
-  transition(ILX_SF, L1_WBDIRTYDATA, M) {
+  transition(ILX_SF, {L1_WBDIRTYDATA, L1_WBDIRTYDATA_DROP}, M) {
     gg_clearLocalSharers;
     vv_allocateL2CacheBlock;
     removeFromDir;
@@ -2259,8 +2268,18 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition(ILX_SF, L1_PUTX) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
+  }
+
   transition({ILS}, SF_Replacement, ILS_SF) {
     ee_sendLocalInv1bySF;
+  }
+
+  transition(ILS_SF, {L1_PUTS, L1_PUTS_only}) {
+    l_writebackAckNeedData;
+    o_popL1RequestQueue;
   }
 
   transition(ILS_SF, L1_WBCLEANDATA, S) {
@@ -2288,7 +2307,7 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
-  transition({S, SLS, SS}, {L1_WBCLEANDATA, L1_WBDIRTYDATA}) {
+  transition({S, SLS, SS, SLSS}, {L1_WBCLEANDATA, L1_WBDIRTYDATA}) {
     o_popL1RequestQueue;
     wa_wakeUpDependents;
   }
@@ -2308,13 +2327,13 @@ machine(MachineType:L2Cache, "Token protocol")
   }
   // I, ILS, ILX, ILO, ILOX, ILOS, ILOSX, S, O, OLS, OLSX, SLS, M
   // v8: I, ILS, ILX, S, O, OLS, OLSX, SLS, M
-  // done: I, ILS, ILX, SLS, S, O, M
-  // not done: OLS, OLSX
-
+  // done: I, ILS, ILX, SLS, S, O, M, OLS, OLSX
+  // not done: 
   transition(ILX, L1_GETS, IFLOXX) {
     kk_forwardLocalGETSToLocalOwner;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2389,6 +2408,7 @@ machine(MachineType:L2Cache, "Token protocol")
     k_forwardLocalGETSToLocalSharer;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2437,6 +2457,7 @@ machine(MachineType:L2Cache, "Token protocol")
     kk_forwardLocalGETSToLocalOwner;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2487,6 +2508,7 @@ machine(MachineType:L2Cache, "Token protocol")
     kk_forwardLocalGETSToLocalOwner;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2537,6 +2559,7 @@ machine(MachineType:L2Cache, "Token protocol")
     kk_forwardLocalGETSToLocalOwner;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2606,6 +2629,7 @@ machine(MachineType:L2Cache, "Token protocol")
     r_SFsetMRU;
     e_sendAckToL1RequestorFromTBE;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2628,6 +2652,7 @@ machine(MachineType:L2Cache, "Token protocol")
     s_recordGetSL1ID;
     a_issueGETS;
     uu_profileMiss;
+    uu_SFMiss;
     vv_allocateSnoopFilterBlock;
     o_popL1RequestQueue;
   }
@@ -2637,6 +2662,7 @@ machine(MachineType:L2Cache, "Token protocol")
     s_recordGetXL1ID;
     a_issueGETX;
     uu_profileMiss;
+    uu_SFMiss;
     vv_allocateSnoopFilterBlock;
     o_popL1RequestQueue;
   }
@@ -2659,6 +2685,7 @@ machine(MachineType:L2Cache, "Token protocol")
     h_countLocalSharersExceptRequestor;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2708,6 +2735,7 @@ machine(MachineType:L2Cache, "Token protocol")
     a_issueGETX;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
@@ -2756,6 +2784,7 @@ machine(MachineType:L2Cache, "Token protocol")
     h_countLocalSharersExceptRequestor;
     r_SFsetMRU;
     uu_profileMiss;
+    uu_SFHit;
     o_popL1RequestQueue;
   }
 
