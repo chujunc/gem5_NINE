@@ -168,6 +168,7 @@ machine(MachineType:L2Cache, "Token protocol")
     // Requests
     L1_GETS,             desc="local L1 GETS request";
     L1_GETX,             desc="local L1 GETX request";
+    SF_set_MRU,          desc="sf set mru";
     L1_PUTO,             desc="local owner wants to writeback";
     L1_PUT_data,       desc="local owner wants to writeback data";
     L1_PUTX,             desc="local exclusive wants to writeback";
@@ -733,6 +734,9 @@ machine(MachineType:L2Cache, "Token protocol")
             trigger(Event:L1_GETS, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
           }
+        } else if (in_msg.Type == CoherenceRequestType:SFsetMru) {
+          trigger(Event:SF_set_MRU, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceRequestType:PUTO) {
           trigger(Event:L1_PUTO, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
@@ -1842,6 +1846,11 @@ machine(MachineType:L2Cache, "Token protocol")
     st_stallAndWaitL1RequestQueue;
   }
 
+  transition({ILS, ILX, ILO, ILOX, ILOS, ILOSX, OLS, OLSX, SLS, ILOSW, ILOSXW, ILSWD, ILXWD, ILOSWD, ILOSXWD, ILOXWD, ILSW, IW, ILXW, SLSW, OLSW, IFLS, IFLO, IFLOX, IFLOXGETX, IFLOXX, IFLOXXGETX, IFLOSX, IFLXO, IGS, IGM, IGMLS, IGMO, IGMOU, IGMIO, OGMIO, IGMIOF, IGMIOFD, IGMIOFS, OGMIOF, OLSS, OLSXS, SLSS, OLSI, ILSI, ILOSD, ILOSXD, ILOD, ILXD, ILOXD, ILX_SF, ILS_SF, MM, SS, OO}, {SF_set_MRU}) {
+    r_SFsetMRU;
+    o_popL1RequestQueue;
+  }
+
   // must happened because we forwarded GETX to local exclusive trying to do wb
   transition({M, O, ILS, ILOX, OLS, OLSX, SLS, S}, L1_PUTX) {  //l1_putX is initialled by l1_replacement
     ll_writebackNack;
@@ -2194,7 +2203,7 @@ machine(MachineType:L2Cache, "Token protocol")
     d_sendDataToL1GETX;
     //vv_allocateSnoopFilterBlock;
     y_copyCacheStateToDir;
-    r_SFsetMRU;
+    r_SFsetMRU; 
     rr_deallocateL2CacheBlock;
     uu_profileHit; 
     o_popL1RequestQueue;

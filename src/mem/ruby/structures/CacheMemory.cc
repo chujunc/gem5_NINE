@@ -265,6 +265,27 @@ CacheMemory::cacheAvail(Addr address) const
     return false;
 }
 
+bool
+CacheMemory::cacheAvailForECI(Addr address) const
+{
+    assert(address == makeLineAddress(address));
+
+    int64_t cacheSet = addressToCacheSet(address);
+
+    for (int i = 0; i < m_cache_assoc; i++) {
+        AbstractCacheEntry* entry = m_cache[cacheSet][i];
+        if (entry != NULL) {
+            if ( entry->m_Permission == AccessPermission_NotPresent) {
+                // Already in the cache or we found an empty entry
+                return true;
+            }
+        } else {
+            return true;
+        }
+    }
+    return false;
+}
+
 AbstractCacheEntry*
 CacheMemory::allocate(Addr address, AbstractCacheEntry *entry)
 {

@@ -47,6 +47,7 @@
 enumeration(CoherenceRequestType, desc="...") {
   GETX,      desc="Get eXclusive";
   GETS,      desc="Get Shared";
+  SFsetMru,  desc="sf set mru";
   GLO_GETS,  desc="Global Get Shared";  //cjc_update5_new
   PUTX,      desc="Put eXclusive";
   PUTO,      desc="Put Owned";
@@ -56,6 +57,7 @@ enumeration(CoherenceRequestType, desc="...") {
   INV,       desc="Invalidation";
   INV_SF,    desc="Invalidation by SF";
   INV_SF_ND, desc="Invalidation by SF and no need data";
+  INV_SF_ECI,  desc="Invalidation by SF ECI and no need data";
   WRITEBACK_CLEAN_DATA,   desc="Clean writeback (contains data)";
   WRITEBACK_CLEAN_ACK,    desc="Clean writeback (contains no data)";
   WRITEBACK_DIRTY_DATA,   desc="Dirty writeback (contains data)";
