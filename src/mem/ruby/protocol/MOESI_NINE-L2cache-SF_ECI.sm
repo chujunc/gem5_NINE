@@ -196,6 +196,8 @@ machine(MachineType:L2Cache, "Token protocol")
 
     Unblock,         desc="Local L1 is telling L2 dir to unblock";
     Unblock_O,       desc="Local L1 is telling L2 dir to unblock";
+    Unblock_eci_nolastcopy,    desc="not last copy eci";
+    Unblock_eci_lastcopy,      desc="last copy eci";
     Exclusive_Unblock,         desc="Local L1 is telling L2 dir to unblock";
 
     DmaAck,          desc="DMA ack from local L1";
@@ -651,7 +653,16 @@ machine(MachineType:L2Cache, "Token protocol")
         } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_O) {  //cjc_update4
           trigger(Event:Unblock_O, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceResponseType:WB_ACK) {
+        } else if (in_msg.Type == CoherenceResponseType:UNBLOCK_ECI) { 
+          Entry cache_entry := getCacheEntry(in_msg.addr);
+          if (isOnlySharer(cache_entry, in_msg.addr, in_msg.Sender)) {
+            trigger(Event:Unblock_eci_lastcopy, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+          }
+          else {
+            trigger(Event:Unblock_eci_nolastcopy, in_msg.addr,
+                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
+          }} else if (in_msg.Type == CoherenceResponseType:WB_ACK) {
           trigger(Event:Writeback_Ack, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceResponseType:WB_NACK) {
@@ -1746,22 +1757,28 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   action(ee_sendLocalInv1bySF_ECIandNoNeedData, "\ee1sfeci", desc="Send local invalidates and no data") {
-      enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
-        if (ProbeFilterMemory.cacheAvailForECI(address) == false) {
-          Addr victimSF_ECI := ProbeFilterMemory.cacheProbe(address);
-          Entry dir_entryECI := getDirEntry(victimSF_ECI);
-          //assert(dir_entryECI.CacheState == State:OLSX);
-          if ( (dir_entryECI.CacheState == State:OLS) || (dir_entryECI.CacheState == State:OLSX) || 
-          (dir_entryECI.CacheState == State:SLS) ) {
-            out_msg.addr := victimSF_ECI;
-            out_msg.Type := CoherenceRequestType:INV_SF_ECI;
-            out_msg.Requestor := machineID;
-            out_msg.RequestorMachine := MachineType:L2Cache;
-            out_msg.Destination.add(dir_entryECI.Sharers.smallestElement(MachineType:L1Cache));
-            out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+    enqueue( localRequestNetwork_out, RequestMsg, response_latency ) {
+      if (ProbeFilterMemory.cacheAvailForECI(address) == false) {
+        Addr victimSF_ECI := ProbeFilterMemory.cacheProbeForECI(address);
+        Entry dir_entryECI := getDirEntry(victimSF_ECI);
+        Entry cache_entryECI := getCacheEntry(victimSF_ECI);
+        if(is_valid(dir_entryECI)&&is_valid(cache_entryECI)){
+          DPRINTF(ProtocolTrace, "%s\n", dir_entryECI.CacheState);
+          if ( (cache_entryECI.CacheState == State:OLS) || (cache_entryECI.CacheState == State:OLSX) || 
+          (cache_entryECI.CacheState == State:SLS) ) { 
+            if( dir_entryECI.Sharers.count() > 1){
+              DPRINTF(ProtocolTrace, "ee_sendLocalInv1bySF_ECIandNoNeedData, %#x\n", victimSF_ECI);
+              out_msg.addr := victimSF_ECI;
+              out_msg.Type := CoherenceRequestType:INV_SF_ECI;
+              out_msg.Requestor := machineID;
+              out_msg.RequestorMachine := MachineType:L2Cache;
+              out_msg.Destination.add(dir_entryECI.Sharers.smallestElement(MachineType:L1Cache));
+              out_msg.MessageSize := MessageSizeType:Invalidate_Control;
+            }
           }
         }
       }
+    }
   }
 
   action(y_copyCacheStateToDir, "y", desc="Copy cache state to directory state") {
@@ -2332,7 +2349,6 @@ machine(MachineType:L2Cache, "Token protocol")
     ee_sendLocalInv1bySFandNoNeedData;
     gg_clearLocalSharers;
     removeFromDir;
-
     wa_wakeUpDependents;
   }
 
@@ -2358,6 +2374,101 @@ machine(MachineType:L2Cache, "Token protocol")
   // v8: I, ILS, ILX, S, O, OLS, OLSX, SLS, M
   // done: I, ILS, ILX, SLS, S, O, M, OLS, OLSX
   // not done: 
+
+  //----------------
+  transition(OLSX, Unblock_eci_nolastcopy, OLSX) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(OLSX, Unblock_eci_lastcopy, M) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition(OLSXS, Unblock_eci_nolastcopy, OLSXS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(OLSXS, Unblock_eci_lastcopy, M) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition(OLS, Unblock_eci_nolastcopy, OLS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(OLS, Unblock_eci_lastcopy, O) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition(OLSS, Unblock_eci_nolastcopy, OLSS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(OLSS, Unblock_eci_lastcopy, O) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition(OLSI, Unblock_eci_nolastcopy, OLSI) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(OLSI, Unblock_eci_lastcopy, OI) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+
+  transition(SLS, Unblock_eci_nolastcopy, SLS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(SLS, Unblock_eci_lastcopy, S) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition({S, M, O, SS, OO, IGM, IGMO, MM}, {Unblock_eci_lastcopy, Unblock_eci_nolastcopy}) {
+    n_popResponseQueue;
+  }
+
+  transition(SLSS, Unblock_eci_nolastcopy, SLSS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(SLSS, Unblock_eci_lastcopy, S) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
+  transition(ILS, Unblock_eci_nolastcopy, ILS) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
+  transition(ILS, Unblock_eci_lastcopy, I) {
+    gg_clearLocalSharers;
+    removeFromDir;
+    n_popResponseQueue;
+  }
+
   transition(ILX, L1_GETS, IFLOXX) {
     kk_forwardLocalGETSToLocalOwner;
     r_SFsetMRU;
@@ -2610,6 +2721,12 @@ machine(MachineType:L2Cache, "Token protocol")
   } */
 
   transition(M, {Unblock, Unblock_O}, OLSX) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
+  transition(O, {Unblock, Unblock_O}, OLS) {
     g_recordLocalSharer;
     n_popResponseQueue;
     wa_wakeUpDependents;
@@ -3215,7 +3332,8 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(SLS, L1_PUTS_only, S) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3239,14 +3357,16 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
    transition(OLS, L1_PUTS_only, O) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
   transition(OLSX, L1_PUTS_only, M) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3339,7 +3459,8 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IW, L1_WBCLEANDATA, S) {
     vv_allocateL2CacheBlock;
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     //y_copyDirToCacheAndRemove;
     u_writeCleanDataToCache;
@@ -3349,7 +3470,8 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IW, L1_WBDIRTYDATA, S) {
     vv_allocateL2CacheBlock;
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     //y_copyDirToCacheAndRemove;
     u_writeDirtyDataToCache;
@@ -3453,20 +3575,6 @@ machine(MachineType:L2Cache, "Token protocol")
     rr_deallocateL2CacheBlock;
   }
 
-  /* transition(ILS, L2_Replacement) {
-    y_copyCacheStateToDir;
-    rr_deallocateL2CacheBlock;
-  }
-
-  transition(ILX, L2_Replacement )  {
-    y_copyCacheStateToDir;
-    rr_deallocateL2CacheBlock;
-  }
-
-  transition({ILO, ILOS}, L2_Replacement )  {
-    y_copyCacheStateToDir;
-    rr_deallocateL2CacheBlock;
-  } */
 
   transition(SLS, L2_Replacement, ILS) {
     y_copyCacheStateToDir;

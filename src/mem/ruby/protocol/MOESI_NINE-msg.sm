@@ -78,6 +78,7 @@ enumeration(CoherenceResponseType, desc="...") {
   UNBLOCK,           desc="Unblock";
   UNBLOCK_EXCLUSIVE, desc="Unblock, we're in E/M";
   UNBLOCK_O,         desc="get data from owner";  //cjc_update4
+  UNBLOCK_ECI,       desc="unblock for eci";
   WB_ACK,            desc="Writeback ack";
   WB_ACK_DATA,       desc="Writeback ack";
   WB_DROP_DATA,      desc="wb drop data";  //cjc_update4

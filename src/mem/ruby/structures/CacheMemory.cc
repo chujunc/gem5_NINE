@@ -358,6 +358,22 @@ CacheMemory::cacheProbe(Addr address) const
                         getVictim(candidates)->getWay()]->m_Address;
 }
 
+Addr
+CacheMemory::cacheProbeForECI(Addr address) const
+{
+    assert(address == makeLineAddress(address));
+    assert(!cacheAvailForECI(address));
+
+    int64_t cacheSet = addressToCacheSet(address);
+    std::vector<ReplaceableEntry*> candidates;
+    for (int i = 0; i < m_cache_assoc; i++) {
+        candidates.push_back(static_cast<ReplaceableEntry*>(
+                                                       m_cache[cacheSet][i]));
+    }
+    return m_cache[cacheSet][m_replacementPolicy_ptr->
+                        getVictim(candidates)->getWay()]->m_Address;
+}
+
 // looks an address up in the cache
 AbstractCacheEntry*
 CacheMemory::lookup(Addr address)
