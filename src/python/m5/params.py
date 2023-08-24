@@ -883,21 +883,21 @@ class AddrRange(ParamValue):
                 self.intlvBits = len(self.masks)
             else:
                 if "intlvBits" in kwargs:
-                    self.intlvBits = int(kwargs.pop("intlvBits"))
+                    self.intlvBits = int(kwargs.pop("intlvBits"))   #l2_bits 3
                     self.masks = [0] * self.intlvBits
                     if "intlvHighBit" not in kwargs:
                         raise TypeError("No interleave bits specified")
-                    intlv_high_bit = int(kwargs.pop("intlvHighBit"))
+                    intlv_high_bit = int(kwargs.pop("intlvHighBit"))  #block_size_bits + l2_bits - 1 = 6+3-1=8
                     xor_high_bit = 0
                     if "xorHighBit" in kwargs:
                         xor_high_bit = int(kwargs.pop("xorHighBit"))
                     for i in range(0, self.intlvBits):
-                        bit1 = intlv_high_bit - i
-                        mask = 1 << bit1
+                        bit1 = intlv_high_bit - i   #8 ,  7 ,  
+                        mask = 1 << bit1            #9'b100000000,  8'b10000000
                         if xor_high_bit != 0:
                             bit2 = xor_high_bit - i
                             mask |= 1 << bit2
-                        self.masks[self.intlvBits - i - 1] = mask
+                        self.masks[self.intlvBits - i - 1] = mask  #masks[2] = 9'b100000000 , masks[1] = 
 
         if len(args) == 0:
             self.start = Addr(kwargs.pop("start"))

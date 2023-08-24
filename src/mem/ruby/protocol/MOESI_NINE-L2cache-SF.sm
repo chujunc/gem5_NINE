@@ -2723,7 +2723,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IGMLS, {Unblock_O, Unblock}) {
     g_recordLocalSharer;
-    h_countLocalSharersExceptRequestor;
+    hh_countLocalSharersExceptL1GETXRequestorInTBE;
     n_popResponseQueue;
   }
 
@@ -2765,7 +2765,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(OGMIO, Unblock_O) {
     g_recordLocalSharer;
-    h_countLocalSharersExceptRequestor;
+    hh_countLocalSharersExceptL1GETXRequestorInTBE;
     n_popResponseQueue;
   }
 

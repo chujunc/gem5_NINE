@@ -1400,17 +1400,18 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(MM, {Fwd_GETS/* , Glo_GETS */}, I) {   //why not to O or S?
+  /* transition(MM, {Fwd_GETS}, I) {   //why not to O or S?
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
     l_popForwardQueue;
-  } 
+  }  */
 
-  /* transition(MM, Fwd_GETS, O) {   //why not to O or S?  //cjc_update4
-    //ee_sendDataExclusive;
+  transition(MM, Fwd_GETS, MS) {
     e_sendDataFromOwner;
+    i_allocateTBE;
+    dd_issuePUTData;
     l_popForwardQueue;
-  } */
+  }
 
   transition(MM, Fwd_DMA, MM) {
     e_sendData;

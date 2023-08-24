@@ -453,7 +453,6 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   int countLocalSharersExceptRequestor(Addr addr, MachineID requestor) {
-    
       Entry dir_entry := getDirEntry(addr);
       if (dir_entry.Sharers.isElement(requestor)) {
         return ( dir_entry.Sharers.count() - 1 );
@@ -2873,7 +2872,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IGMLS, {Unblock_O, Unblock}) {
     g_recordLocalSharer;
-    h_countLocalSharersExceptRequestor;
+    hh_countLocalSharersExceptL1GETXRequestorInTBE;
     n_popResponseQueue;
   }
 
@@ -2915,7 +2914,7 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(OGMIO, Unblock_O) {
     g_recordLocalSharer;
-    h_countLocalSharersExceptRequestor;
+    hh_countLocalSharersExceptL1GETXRequestorInTBE;
     n_popResponseQueue;
   }
 
