@@ -702,6 +702,22 @@ machine(MachineType:L2Cache, "Token protocol")
           Entry dir_entry := getDirEntry(in_msg.addr);
           if (is_invalid(dir_entry) && ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
             Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
+            //--------------------------------------------
+            while (true) {
+              Entry dir_entrySF := getDirEntry(victimSF);
+              if((dir_entrySF.OwnerValid == true) && (dir_entrySF.Owner == in_msg.Requestor)){
+                break;
+              }
+              else{
+                Addr victimSF := ProbeFilterMemory.cacheProbeSHARP(in_msg.addr);
+                count:=count+1;
+                if(count == WAY) {
+                  Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
+                  break;
+                }
+              }
+            }
+            //-------------------------------------------------
             Entry cache_entry2 := getCacheEntry(victimSF);
             if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF) == false) {
               Addr victim := L2cache.cacheProbe(victimSF);

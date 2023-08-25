@@ -1148,6 +1148,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     zz_recycleMandatoryQueue;
   }
 
+  transition({M_W, MM_W}, {Inv_sf, Inv_sf_nd}) {
+    z_recycleRequestQueue;
+  }
+
   transition({M_W, MM_W}, {Fwd_GETS, Glo_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
     z_recycleRequestQueue;
   }

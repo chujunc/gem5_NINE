@@ -186,6 +186,7 @@ def create_system(
             assoc=options.l2_assoc,
             replacement_policy=LRURP(),
             start_index_bit=block_size_bits + l2_bits,
+            #start_index_bit=block_size_bits,
         )
         
         sf = ProbeFilterMemory(
@@ -193,6 +194,7 @@ def create_system(
             assoc=options.sf_assoc,
             replacement_policy=LRURP(),
             start_index_bit=block_size_bits + l2_bits,
+            #start_index_bit=block_size_bits,
         )
 
         l2_cntrl = L2Cache_Controller(
