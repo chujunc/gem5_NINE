@@ -115,6 +115,7 @@ class CacheMemory : public SimObject
     // Returns with the physical address of the conflicting cache line
     Addr cacheProbe(Addr address) const;
     Addr cacheProbeForECI(Addr address) const;
+    Addr cacheProbeForSHARP(Addr address) const;
 
     // looks an address up in the cache
     AbstractCacheEntry* lookup(Addr address);

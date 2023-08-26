@@ -199,6 +199,7 @@ structure (CacheMemory, external = "yes") {
   bool cacheAvailForECI(Addr);
   Addr cacheProbe(Addr);
   Addr cacheProbeForECI(Addr);
+  Addr cacheProbeForSHARP(Addr);
   AbstractCacheEntry getNullEntry();
   AbstractCacheEntry allocate(Addr, AbstractCacheEntry);
   AbstractCacheEntry allocate(Addr, AbstractCacheEntry, bool);
