@@ -104,6 +104,8 @@ class Base : public SimObject
     virtual ReplaceableEntry* getVictim(
                            const ReplacementCandidates& candidates) const = 0;
 
+    virtual ReplaceableEntry* getVictimSHARP(
+                           const ReplacementCandidates& candidates) const = 0;
     /**
      * Instantiate a replacement data entry.
      *

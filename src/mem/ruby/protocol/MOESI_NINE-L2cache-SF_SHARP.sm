@@ -703,13 +703,14 @@ machine(MachineType:L2Cache, "Token protocol")
           if (is_invalid(dir_entry) && ProbeFilterMemory.cacheAvail(in_msg.addr) == false) {
             Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);
             //--------------------------------------------
+            int count:=0;
             while (true) {
               Entry dir_entrySF := getDirEntry(victimSF);
               if((dir_entrySF.OwnerValid == true) && (dir_entrySF.Owner == in_msg.Requestor)){
                 break;
               }
               else{
-                Addr victimSF := ProbeFilterMemory.cacheProbeSHARP(in_msg.addr);
+                Addr victimSF := ProbeFilterMemory.cacheProbeForSHARP(in_msg.addr);
                 count:=count+1;
                 if(count == WAY) {
                   Addr victimSF := ProbeFilterMemory.cacheProbe(in_msg.addr);

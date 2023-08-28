@@ -2585,6 +2585,12 @@ machine(MachineType:L2Cache, "Token protocol")
     wa_wakeUpDependents;
   }
 
+  transition(O, {Unblock, Unblock_O}, OLS) {
+    g_recordLocalSharer;
+    n_popResponseQueue;
+    wa_wakeUpDependents;
+  }
+
   transition(ILOXWD, Unblock_O, ILOXWD) {
     g_recordLocalSharer;
     n_popResponseQueue;
@@ -3177,7 +3183,8 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
   transition(SLS, L1_PUTS_only, S) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3201,14 +3208,16 @@ machine(MachineType:L2Cache, "Token protocol")
   }
 
    transition(OLS, L1_PUTS_only, O) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
   }
 
   transition(OLSX, L1_PUTS_only, M) {  //cjc_update2
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     l_writebackAckDropDataAndSharerUpdated;
     o_popL1RequestQueue;
@@ -3301,7 +3310,8 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IW, L1_WBCLEANDATA, S) {
     vv_allocateL2CacheBlock;
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     //y_copyDirToCacheAndRemove;
     u_writeCleanDataToCache;
@@ -3311,7 +3321,8 @@ machine(MachineType:L2Cache, "Token protocol")
 
   transition(IW, L1_WBDIRTYDATA, S) {
     vv_allocateL2CacheBlock;
-    gg_clearSharerFromL1Request;
+    //gg_clearSharerFromL1Request;
+    gg_clearLocalSharers;
     removeFromDir;
     //y_copyDirToCacheAndRemove;
     u_writeDirtyDataToCache;
