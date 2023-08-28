@@ -107,6 +107,7 @@ LRU::getVictimSHARP(const ReplacementCandidates& candidates) const
                     victim->replacementData)->lastTouchTick) {
             victim = candidate;
         }
+        
     }
 
     return victim;
