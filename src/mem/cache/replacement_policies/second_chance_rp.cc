@@ -132,6 +132,50 @@ SecondChance::getVictim(const ReplacementCandidates& candidates) const
     return victim;
 }
 
+ReplaceableEntry*
+SecondChance::getVictimSHARP(const ReplacementCandidates& candidates) const
+{
+    // There must be at least one replacement candidate
+    assert(candidates.size() > 0);
+
+    // Search for invalid entries, as they have the eviction priority
+    for (const auto& candidate : candidates) {
+        // Cast candidate's replacement data
+        std::shared_ptr<SecondChanceReplData> candidate_replacement_data =
+            std::static_pointer_cast<SecondChanceReplData>(
+                candidate->replacementData);
+
+        // Stop iteration if found an invalid entry
+        if ((candidate_replacement_data->tickInserted == Tick(0)) &&
+            !candidate_replacement_data->hasSecondChance) {
+            return candidate;
+        }
+    }
+
+    // Visit all candidates to find victim
+    ReplaceableEntry* victim = candidates[0];
+    bool search_victim = true;
+    while (search_victim) {
+        // Do a FIFO victim search
+        victim = FIFO::getVictim(candidates);
+
+        // Cast victim's replacement data for code readability
+        std::shared_ptr<SecondChanceReplData> victim_replacement_data =
+            std::static_pointer_cast<SecondChanceReplData>(
+                victim->replacementData);
+
+        // If victim has a second chance, use it and repeat search
+        if (victim_replacement_data->hasSecondChance) {
+            useSecondChance(victim_replacement_data);
+        } else {
+            // Found victim
+            search_victim = false;
+        }
+    }
+
+    return victim;
+}
+
 std::shared_ptr<ReplacementData>
 SecondChance::instantiateEntry()
 {

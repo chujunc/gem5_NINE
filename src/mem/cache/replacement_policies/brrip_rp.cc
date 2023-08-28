@@ -142,6 +142,55 @@ BRRIP::getVictim(const ReplacementCandidates& candidates) const
     return victim;
 }
 
+ReplaceableEntry*
+BRRIP::getVictimSHARP(const ReplacementCandidates& candidates) const
+{
+    // There must be at least one replacement candidate
+    assert(candidates.size() > 0);
+
+    // Use first candidate as dummy victim
+    ReplaceableEntry* victim = candidates[0];
+
+    // Store victim->rrpv in a variable to improve code readability
+    int victim_RRPV = std::static_pointer_cast<BRRIPReplData>(
+                        victim->replacementData)->rrpv;
+
+    // Visit all candidates to find victim
+    for (const auto& candidate : candidates) {
+        std::shared_ptr<BRRIPReplData> candidate_repl_data =
+            std::static_pointer_cast<BRRIPReplData>(
+                candidate->replacementData);
+
+        // Stop searching for victims if an invalid entry is found
+        if (!candidate_repl_data->valid) {
+            return candidate;
+        }
+
+        // Update victim entry if necessary
+        int candidate_RRPV = candidate_repl_data->rrpv;
+        if (candidate_RRPV > victim_RRPV) {
+            victim = candidate;
+            victim_RRPV = candidate_RRPV;
+        }
+    }
+
+    // Get difference of victim's RRPV to the highest possible RRPV in
+    // order to update the RRPV of all the other entries accordingly
+    int diff = std::static_pointer_cast<BRRIPReplData>(
+        victim->replacementData)->rrpv.saturate();
+
+    // No need to update RRPV if there is no difference
+    if (diff > 0){
+        // Update RRPV of all candidates
+        for (const auto& candidate : candidates) {
+            std::static_pointer_cast<BRRIPReplData>(
+                candidate->replacementData)->rrpv += diff;
+        }
+    }
+
+    return victim;
+}
+
 std::shared_ptr<ReplacementData>
 BRRIP::instantiateEntry()
 {

@@ -96,6 +96,32 @@ MRU::getVictim(const ReplacementCandidates& candidates) const
     return victim;
 }
 
+ReplaceableEntry*
+MRU::getVictimSHARP(const ReplacementCandidates& candidates) const
+{
+    // There must be at least one replacement candidate
+    assert(candidates.size() > 0);
+
+    // Visit all candidates to find victim
+    ReplaceableEntry* victim = candidates[0];
+    for (const auto& candidate : candidates) {
+        std::shared_ptr<MRUReplData> candidate_replacement_data =
+            std::static_pointer_cast<MRUReplData>(candidate->replacementData);
+
+        // Stop searching entry if a cache line that doesn't warm up is found.
+        if (candidate_replacement_data->lastTouchTick == 0) {
+            victim = candidate;
+            break;
+        } else if (candidate_replacement_data->lastTouchTick >
+                std::static_pointer_cast<MRUReplData>(
+                    victim->replacementData)->lastTouchTick) {
+            victim = candidate;
+        }
+    }
+
+    return victim;
+}
+
 std::shared_ptr<ReplacementData>
 MRU::instantiateEntry()
 {

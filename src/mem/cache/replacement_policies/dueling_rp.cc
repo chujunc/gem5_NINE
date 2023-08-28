@@ -173,6 +173,73 @@ Dueling::getVictim(const ReplacementCandidates& candidates) const
     return victim;
 }
 
+ReplaceableEntry*
+Dueling::getVictimSHARP(const ReplacementCandidates& candidates) const
+{
+    // This function assumes that all candidates are either part of the same
+    // sampled set, or are not samples.
+    // @todo This should be improved at some point.
+    panic_if(candidates.size() != params().team_size, "We currently only "
+        "support team sizes that match the number of replacement candidates");
+
+    // The team with the most misses loses
+    bool winner = !duelingMonitor.getWinner();
+
+    // If the entry is a sample, it can only be used with a certain policy.
+    bool team;
+    bool is_sample = duelingMonitor.isSample(static_cast<Dueler*>(
+        std::static_pointer_cast<DuelerReplData>(
+            candidates[0]->replacementData).get()), team);
+
+    // All replacement candidates must be set appropriately, so that the
+    // proper replacement data is used. A replacement policy X must be used
+    // if the candidates are its samples - in which case they must always
+    // use X - or if it is not a sample, and X is currently the best RP.
+    // This assumes that A's team is "false", and B's team is "true".
+    bool team_a;
+    if ((is_sample && !team) || (!is_sample && !winner)) {
+        duelingStats.selectedA++;
+        team_a = true;
+    } else {
+        duelingStats.selectedB++;
+        team_a = false;
+    }
+
+    // Create a temporary list of replacement candidates which re-routes the
+    // replacement data of the selected team
+    std::vector<std::shared_ptr<ReplacementData>> dueling_replacement_data;
+    for (auto& candidate : candidates) {
+        std::shared_ptr<DuelerReplData> dueler_repl_data =
+            std::static_pointer_cast<DuelerReplData>(
+            candidate->replacementData);
+
+        // As of now we assume that all candidates are either part of
+        // the same sampled team, or are not samples.
+        bool candidate_team;
+        panic_if(
+            duelingMonitor.isSample(dueler_repl_data.get(), candidate_team) &&
+            (team != candidate_team),
+            "Not all sampled candidates belong to the same team");
+
+        // Copy the original entry's data, re-routing its replacement data
+        // to the selected one
+        dueling_replacement_data.push_back(dueler_repl_data);
+        candidate->replacementData = team_a ? dueler_repl_data->replDataA :
+            dueler_repl_data->replDataB;
+    }
+
+    // Use the selected replacement policy to find the victim
+    ReplaceableEntry* victim = team_a ? replPolicyA->getVictim(candidates) :
+        replPolicyB->getVictim(candidates);
+
+    // Search for entry within the original candidates and clean-up duplicates
+    for (int i = 0; i < candidates.size(); i++) {
+        candidates[i]->replacementData = dueling_replacement_data[i];
+    }
+
+    return victim;
+}
+
 std::shared_ptr<ReplacementData>
 Dueling::instantiateEntry()
 {
