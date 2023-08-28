@@ -119,7 +119,8 @@ class SecondChance : public FIFO
      */
     ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
                                                                      override;
-
+    ReplaceableEntry* getVictimSHARP(const ReplacementCandidates& candidates) const
+                                                                     override;
     /**
      * Instantiate a replacement data entry.
      *

@@ -196,7 +196,8 @@ class TreePLRU : public Base
      */
     ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
                                                                      override;
-
+    ReplaceableEntry* getVictimSHARP(const ReplacementCandidates& candidates) const
+                                                                     override;
     /**
      * Instantiate a replacement data entry. Consecutive calls to this
      * function use the same tree up to numLeaves. When numLeaves replacement
