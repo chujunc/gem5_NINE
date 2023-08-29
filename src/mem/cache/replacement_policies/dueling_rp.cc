@@ -174,7 +174,7 @@ Dueling::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-Dueling::getVictimSHARP(const ReplacementCandidates& candidates) const
+Dueling::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // This function assumes that all candidates are either part of the same
     // sampled set, or are not samples.

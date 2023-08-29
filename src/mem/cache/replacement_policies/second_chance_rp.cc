@@ -133,7 +133,7 @@ SecondChance::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-SecondChance::getVictimSHARP(const ReplacementCandidates& candidates) const
+SecondChance::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

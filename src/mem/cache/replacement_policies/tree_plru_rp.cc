@@ -197,7 +197,7 @@ TreePLRU::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-TreePLRU::getVictimSHARP(const ReplacementCandidates& candidates) const
+TreePLRU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

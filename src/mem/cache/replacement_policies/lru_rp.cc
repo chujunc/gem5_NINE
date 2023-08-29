@@ -80,10 +80,8 @@ LRU::getVictim(const ReplacementCandidates& candidates) const
     ReplaceableEntry* victim = candidates[0];
     for (const auto& candidate : candidates) {
         // Update victim entry if necessary
-        if (std::static_pointer_cast<LRUReplData>(
-                    candidate->replacementData)->lastTouchTick <
-                std::static_pointer_cast<LRUReplData>(
-                    victim->replacementData)->lastTouchTick) {
+        if (std::static_pointer_cast<LRUReplData>(candidate->replacementData)->lastTouchTick <
+                std::static_pointer_cast<LRUReplData>(victim->replacementData)->lastTouchTick) {
             victim = candidate;
         }
     }
@@ -91,24 +89,26 @@ LRU::getVictim(const ReplacementCandidates& candidates) const
     return victim;
 }
 
+bool
+LRU::compareByLastTouchTick(const ReplaceableEntry* a, const ReplaceableEntry* b) 
+{
+        return std::static_pointer_cast<LRUReplData>(a->replacementData)->lastTouchTick <
+           std::static_pointer_cast<LRUReplData>(b->replacementData)->lastTouchTick;
+}
+
 ReplaceableEntry*
-LRU::getVictimSHARP(const ReplacementCandidates& candidates) const
+LRU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);
 
     // Visit all candidates to find victim
-    ReplaceableEntry* victim = candidates[0];
-    for (const auto& candidate : candidates) {
-        // Update victim entry if necessary
-        if (std::static_pointer_cast<LRUReplData>(
-                    candidate->replacementData)->lastTouchTick <
-                std::static_pointer_cast<LRUReplData>(
-                    victim->replacementData)->lastTouchTick) {
-            victim = candidate;
-        }
-        
-    }
+    //ReplaceableEntry* victim = candidates[0];
+    // Sort candidates by lastTouchTick
+    std::sort(candidates.begin(), candidates.end(), compareByLastTouchTick);
+
+    // The first candidate after sorting will be the victim
+    ReplaceableEntry* victim = candidates[cnt];
 
     return victim;
 }

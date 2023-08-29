@@ -97,7 +97,7 @@ MRU::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-MRU::getVictimSHARP(const ReplacementCandidates& candidates) const
+MRU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

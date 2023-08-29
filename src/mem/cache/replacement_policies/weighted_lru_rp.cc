@@ -92,7 +92,7 @@ WeightedLRU::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-WeightedLRU::getVictimSHARP(const ReplacementCandidates& candidates) const
+WeightedLRU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     assert(candidates.size() > 0);
 

@@ -91,7 +91,7 @@ Random::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-Random::getVictimSHARP(const ReplacementCandidates& candidates) const
+Random::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

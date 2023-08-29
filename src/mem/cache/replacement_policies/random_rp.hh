@@ -104,7 +104,7 @@ class Random : public Base
      */
     ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
                                                                      override;
-    ReplaceableEntry* getVictimSHARP(const ReplacementCandidates& candidates) const
+    ReplaceableEntry* getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
                                                                      override;
     /**
      * Instantiate a replacement data entry.
