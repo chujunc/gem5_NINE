@@ -90,7 +90,7 @@ FIFO::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-FIFO::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
+FIFO::getVictimCRAR(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

@@ -375,7 +375,7 @@ CacheMemory::cacheProbeForECI(Addr address) const
 }
 
 Addr
-CacheMemory::cacheProbeForSHARP(Addr address, int cnt) const
+CacheMemory::cacheProbeForCRAR(Addr address, int cnt) const
 {
     assert(address == makeLineAddress(address));
     assert(!cacheAvail(address));
@@ -387,7 +387,7 @@ CacheMemory::cacheProbeForSHARP(Addr address, int cnt) const
                                                        m_cache[cacheSet][i]));
     }
     return m_cache[cacheSet][m_replacementPolicy_ptr->
-                        getVictimSHARP(candidates, cnt)->getWay()]->m_Address;
+                        getVictimCRAR(candidates, cnt)->getWay()]->m_Address;
 }
 
 // looks an address up in the cache

@@ -88,7 +88,7 @@ LFU::getVictim(const ReplacementCandidates& candidates) const
 }
 
 ReplaceableEntry*
-LFU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
+LFU::getVictimCRAR(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);

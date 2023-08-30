@@ -103,7 +103,7 @@ class LFU : public Base
      */
     ReplaceableEntry* getVictim(const ReplacementCandidates& candidates) const
                                                                      override;
-    ReplaceableEntry* getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
+    ReplaceableEntry* getVictimCRAR(ReplacementCandidates& candidates, int cnt) 
                                                                      override;
 
     /**

@@ -97,7 +97,7 @@ LRU::compareByLastTouchTick(const ReplaceableEntry* a, const ReplaceableEntry* b
 }
 
 ReplaceableEntry*
-LRU::getVictimSHARP(ReplacementCandidates& candidates, int cnt) 
+LRU::getVictimCRAR(ReplacementCandidates& candidates, int cnt) 
 {
     // There must be at least one replacement candidate
     assert(candidates.size() > 0);
