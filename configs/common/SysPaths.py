@@ -51,7 +51,7 @@ class PathSearchFunc(object):
                 except KeyError:
                     paths = [
                         "/dist/m5/system",
-                        "/home/chu/full_system_images",
+                        "/home/chu/full_system_images2",
                     ]  # paths = ["/dist/m5/system", "/n/poolfs/z/dist/m5/system"]
 
                 # expand '~' and '~user' in paths

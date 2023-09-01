@@ -1851,6 +1851,10 @@ machine(MachineType:L2Cache, "Token protocol")
     o_popL1RequestQueue;
   }
 
+  transition({M, S, O, I}, {SF_set_MRU}) {
+    o_popL1RequestQueue;
+  }
+
   // must happened because we forwarded GETX to local exclusive trying to do wb
   transition({M, O, ILS, ILOX, OLS, OLSX, SLS, S}, L1_PUTX) {  //l1_putX is initialled by l1_replacement
     ll_writebackNack;

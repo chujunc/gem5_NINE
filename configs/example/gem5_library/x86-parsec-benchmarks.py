@@ -68,7 +68,7 @@ from gem5.simulate.exit_event import ExitEvent
 requires(
     isa_required=ISA.X86,
     coherence_protocol_required=CoherenceProtocol.MESI_TWO_LEVEL,
-    kvm_required=True,
+    kvm_required=False,
 )
 
 # Following are the list of benchmark programs for parsec.
@@ -146,7 +146,7 @@ memory = DualChannelDDR4_2400(size="3GB")
 # cores for the command we wish to run after boot.
 
 processor = SimpleSwitchableProcessor(
-    starting_core_type=CPUTypes.KVM,
+    starting_core_type=CPUTypes.TIMING,
     switch_core_type=CPUTypes.TIMING,
     isa=ISA.X86,
     num_cores=2,
