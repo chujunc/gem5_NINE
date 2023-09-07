@@ -2462,6 +2462,11 @@ machine(MachineType:L2Cache, "Token protocol")
     n_popResponseQueue;
   }
 
+  transition({IFLOXGETX, IGMLS, OGMIO}, Unblock_eci_nolastcopy) {
+    gg_clearSharerFromL1Response;
+    n_popResponseQueue;
+  }
+
   transition(ILS, Unblock_eci_lastcopy, I) {
     gg_clearLocalSharers;
     removeFromDir;

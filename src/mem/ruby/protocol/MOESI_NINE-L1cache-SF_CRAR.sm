@@ -1398,6 +1398,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
+  transition(IS, Inv_sf_nd) {
+    l_popForwardQueue;
+  }
+
   transition(MM, Fwd_GETX, I) {
     ee_sendDataExclusive;
     forward_eviction_to_cpu;
@@ -1719,7 +1723,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition(I, Writeback_Nack) {
+  transition({I, IS}, Writeback_Nack) {
     //s_deallocateTBE;
     n_popResponseQueue;
   }

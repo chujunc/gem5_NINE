@@ -1723,7 +1723,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition(I, Writeback_Nack) {
+  transition({I, IS}, Writeback_Nack) {
     //s_deallocateTBE;
     n_popResponseQueue;
   }

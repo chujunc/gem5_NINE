@@ -818,25 +818,6 @@ machine(MachineType:L2Cache, "Token protocol")
               }
             } //6
             if(count == 6){
-              Addr victimSF6 := ProbeFilterMemory.cacheProbeForCRAR(in_msg.addr, count);
-              Entry dir_entrySF7 := getDirEntry(victimSF6);
-              DPRINTF(ProtocolTrace, "%d, %s, %#x\n", count, dir_entrySF7.CacheState, victimSF6);
-              if((dir_entrySF7.OwnerValid == true) && (dir_entrySF7.Owner == in_msg.Requestor)){
-                count:=9;
-                Entry cache_entry2 := getCacheEntry(victimSF6);
-                if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF6) == false) {
-                  Addr victim := L2cache.cacheProbe(victimSF6);
-                  trigger(Event:L2_Replacement, victim, getCacheEntry(victim), TBEs[victim]);
-                }
-                else {
-                  trigger(Event:SF_Replacement,victimSF6, getCacheEntry(victimSF6), TBEs[victimSF6]);
-                }
-              }
-              else{
-                count:=count+1;
-              }
-            } //7
-            if(count == 7){
               Entry cache_entry2 := getCacheEntry(victimSF);
               if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF) == false) {
                 Addr victim := L2cache.cacheProbe(victimSF);
@@ -974,25 +955,6 @@ machine(MachineType:L2Cache, "Token protocol")
               }
             } //6
             if(count == 6){
-              Addr victimSF6 := ProbeFilterMemory.cacheProbeForCRAR(in_msg.addr, count);
-              Entry dir_entrySF7 := getDirEntry(victimSF6);
-              DPRINTF(ProtocolTrace, "%d, %s, %#x\n", count, dir_entrySF7.CacheState, victimSF6);
-              if((dir_entrySF7.OwnerValid == true) && (dir_entrySF7.Owner == in_msg.Requestor)){
-                count:=9;
-                Entry cache_entry2 := getCacheEntry(victimSF6);
-                if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF6) == false) {
-                  Addr victim := L2cache.cacheProbe(victimSF6);
-                  trigger(Event:L2_Replacement, victim, getCacheEntry(victim), TBEs[victim]);
-                }
-                else {
-                  trigger(Event:SF_Replacement,victimSF6, getCacheEntry(victimSF6), TBEs[victimSF6]);
-                }
-              }
-              else{
-                count:=count+1;
-              }
-            } //7
-            if(count == 7){
               Entry cache_entry2 := getCacheEntry(victimSF);
               if (is_invalid(cache_entry2) && L2cache.cacheAvail(victimSF) == false) {
                 Addr victim := L2cache.cacheProbe(victimSF);
