@@ -111,7 +111,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Inv,           desc="Invalidations from the directory";
     Inv_sf,        desc="Invalidations from SF";
     Inv_sf_nd,     desc="Invalidations from SF and no need data";
-    Inv_sf_eci,    desc="Invalidations from SF ECI and no need data";
 
     // Responses
     Ack,             desc="Received an ack message";
@@ -413,9 +412,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else if (in_msg.Type == CoherenceRequestType:INV_SF_ND) {
           trigger(Event:Inv_sf_nd, in_msg.addr,
-                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceRequestType:INV_SF_ECI) {
-          trigger(Event:Inv_sf_eci, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else {
           error("Unexpected message");
@@ -748,18 +744,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     enqueue(responseNetwork_out, ResponseMsg, response_latency) {
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:UNBLOCK;
-      out_msg.Sender := machineID;
-      out_msg.SenderMachine := MachineType:L1Cache;
-      out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
-      out_msg.MessageSize := MessageSizeType:Unblock_Control;
-    }
-  }
-
-  action(g_sendUnblockECI, "geci", desc="Send unblock to memory") {
-    enqueue(responseNetwork_out, ResponseMsg, response_latency) {
-      out_msg.addr := address;
-      out_msg.Type := CoherenceResponseType:UNBLOCK_ECI;
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
@@ -1144,12 +1128,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     zz_recycleMandatoryQueue;
   }
 
-  transition({M_W, MM_W}, L1_Replacement) {
-    zz_recycleMandatoryQueue;
-  }
-
   transition({M_W, MM_W}, {Inv_sf, Inv_sf_nd}) {
     z_recycleRequestQueue;
+  }
+
+  transition({M_W, MM_W}, L1_Replacement) {
+    zz_recycleMandatoryQueue;
   }
 
   transition({M_W, MM_W}, {Fwd_GETS, Glo_GETS, Fwd_DMA, Fwd_GETX, Own_GETX, Inv}) {
@@ -1234,32 +1218,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(S, Fwd_GETS, SS) {
+  transition(S, Fwd_GETS) {
     e_sendData;
-    //e_sendDataFromOwner;
-    //e_sendDataToL1;
-    //e_sendDataToL2;
-    i_allocateTBE;
-    dd_issuePUTData;
     l_popForwardQueue;
-  }
-
-  transition(SS, Fwd_GETS) {
-    e_sendData;
-    //e_sendDataFromOwner;
-    l_popForwardQueue;
-  }
-
-  transition(SS, Writeback_Ack_Data, S) {
-    //e_sendDataToL2;  // always send data
-    qq_sendWBDataFromTBEToL2;
-    s_deallocateTBE;
-    n_popResponseQueue;
-  }
-
-  transition(SS, Writeback_drop_data, S) {
-    s_deallocateTBE;
-    n_popResponseQueue;
   }
 
   transition(SM, Writeback_Ack_Data) {
@@ -1298,10 +1259,8 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(O, Fwd_GETS, OS) {  //cjc_update5
-    e_sendDataFromOwner;
-    i_allocateTBE;
-    dd_issuePUTData;
+  transition(O, Fwd_GETS) {  //cjc_update5
+    e_sendData;
     l_popForwardQueue;
     
   }
@@ -1393,30 +1352,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(S, Inv_sf_eci, I) {
-    forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition({SI, II}, Inv_sf_eci, I) {
-    s_deallocateTBE;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition(SM, Inv_sf_eci, IM) {
-    forward_eviction_to_cpu;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition(I, Inv_sf_eci, I) {
-    //g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
   transition({SM}, Inv_sf_nd, IM) {
     forward_eviction_to_cpu;
     l_popForwardQueue;
@@ -1492,15 +1427,9 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  /* transition(M, {Fwd_GETS/* , Glo_GETS }, O) {   //HERE
-    e_sendData;
-    l_popForwardQueue;
-  }  */
 
-  transition(M, Fwd_GETS, MS) {
-    e_sendDataFromOwner;
-    i_allocateTBE;
-    dd_issuePUTData;
+  transition(M, Fwd_GETS, O) {
+    e_sendData;
     l_popForwardQueue;
   }
 
@@ -1558,14 +1487,11 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   transition(SM, Fwd_GETS) {
     e_sendData;
-    //e_sendDataFromOwner;
-    dd_issuePUTData;
     l_popForwardQueue;
   }
 
   transition(SM, Glo_GETS) {
-    //e_sendData;
-    e_sendDataFromOwner;
+    e_sendData;
     l_popForwardQueue;
   }
 
@@ -1591,9 +1517,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(OM, Fwd_GETS) {  //cjc_update5
-    //e_sendData;
-    e_sendDataFromOwner;
-    dd_issuePUTData;
+    e_sendData;
     l_popForwardQueue;
   }
 
@@ -1675,17 +1599,17 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
   // Transitions from OI/MI
 
-  /* transition(MI, {Fwd_GETS, Glo_GETS}, OI) {
+  transition(MI, {Fwd_GETS, Glo_GETS}, OI) {
     q_sendDataFromTBEToCache;
     l_popForwardQueue;
-  }  */
+  }  
 
-  transition(MI, Fwd_GETS) {
+  /* transition(MI, Fwd_GETS) {
     q_sendDataFromTBEToCacheFromOwner;
     dd_issuePUTData;
     l_popForwardQueue;
   }
-
+ */
   transition(MI, Writeback_Ack_Data, I) {  //cjc_update3
     qq_sendWBDataFromTBEToL2AndDrop;  // always send data
     s_deallocateTBE;
@@ -1704,14 +1628,12 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition({OI}, {Fwd_GETS, Glo_GETS}) {
-    q_sendDataFromTBEToCacheFromOwner;
-    dd_issuePUTData;
+    q_sendDataFromTBEToCache;
     l_popForwardQueue;
   }
 
   transition({SI}, {Fwd_GETS, Glo_GETS}) {
     q_sendDataFromTBEToCache;
-    dd_issuePUTData;
     l_popForwardQueue;
   }
 
@@ -1767,7 +1689,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     n_popResponseQueue;
   }
 
-  transition(I, Writeback_Nack) {
+  transition({I, IS}, Writeback_Nack) {
     //s_deallocateTBE;
     n_popResponseQueue;
   }

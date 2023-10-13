@@ -13,7 +13,7 @@ include "MOESI_NINE-L1cache-SF_TLH+CRARP.sm";
 //include "MOESI_NINE-L2cache-SF_V1.sm";
 //include "MOESI_NINE-L2cache-SF_V2.sm";
 //include "MOESI_NINE-L2cache-SF_TLH.sm";
-include "MOESI_NINE-L2cache-SF_TLH+CRARP.sm";
+include "MOESI_NINE-L1cache-SF_ECI.sm";
 //include "MOESI_NINE-L2cache-SF_ECI.sm";
 //include "MOESI_NINE-L2cache-SF_ECI+CRARP.sm";
 //include "MOESI_NINE-L2cache-SF_CRAR.sm";

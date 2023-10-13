@@ -42,10 +42,10 @@ machine(MachineType:L1Cache, "L1 cache protocol")
  : Sequencer * sequencer;
    CacheMemory * L1Icache;
    CacheMemory * L1Dcache;
-   Cycles request_latency := 6;
-   Cycles response_data_latency := 6;
-   Cycles response_latency := 6;
-   Cycles use_timeout_latency := 80;
+   Cycles request_latency := 4;
+   Cycles response_data_latency := 8;
+   Cycles response_latency := 4;
+   Cycles use_timeout_latency := 50;
    bool send_evictions;
 
    // Message Queues
@@ -111,7 +111,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     Inv,           desc="Invalidations from the directory";
     Inv_sf,        desc="Invalidations from SF";
     Inv_sf_nd,     desc="Invalidations from SF and no need data";
-    Inv_sf_eci,    desc="Invalidations from SF ECI and no need data";
 
     // Responses
     Ack,             desc="Received an ack message";
@@ -414,9 +413,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
         } else if (in_msg.Type == CoherenceRequestType:INV_SF_ND) {
           trigger(Event:Inv_sf_nd, in_msg.addr,
                   getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
-        } else if (in_msg.Type == CoherenceRequestType:INV_SF_ECI) {
-          trigger(Event:Inv_sf_eci, in_msg.addr,
-                  getCacheEntry(in_msg.addr), TBEs[in_msg.addr]);
         } else {
           error("Unexpected message");
         }
@@ -506,6 +502,19 @@ machine(MachineType:L1Cache, "L1 cache protocol")
 
 
   // ACTIONS
+  action(a_issueSFsetMru, "asf", desc="Issue set SF mru") {
+    peek(mandatoryQueue_in, RubyRequest) {
+      enqueue(requestNetwork_out, RequestMsg,  request_latency) {
+        out_msg.addr := address;
+        out_msg.Type := CoherenceRequestType:SFsetMru;
+        out_msg.Requestor := machineID;
+        out_msg.RequestorMachine := MachineType:L1Cache;
+        out_msg.Destination.add(mapAddressToMachine(address,
+                                                    MachineType:L2Cache));
+        out_msg.MessageSize := MessageSizeType:Request_Control;
+      }
+    }
+  }
 
   action(a_issueGETS, "a", desc="Issue GETS") {
     peek(mandatoryQueue_in, RubyRequest) {
@@ -748,18 +757,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     enqueue(responseNetwork_out, ResponseMsg, response_latency) {
       out_msg.addr := address;
       out_msg.Type := CoherenceResponseType:UNBLOCK;
-      out_msg.Sender := machineID;
-      out_msg.SenderMachine := MachineType:L1Cache;
-      out_msg.Destination.add(mapAddressToMachine(address,
-                                                  MachineType:L2Cache));
-      out_msg.MessageSize := MessageSizeType:Unblock_Control;
-    }
-  }
-
-  action(g_sendUnblockECI, "geci", desc="Send unblock to memory") {
-    enqueue(responseNetwork_out, ResponseMsg, response_latency) {
-      out_msg.addr := address;
-      out_msg.Type := CoherenceResponseType:UNBLOCK_ECI;
       out_msg.Sender := machineID;
       out_msg.SenderMachine := MachineType:L1Cache;
       out_msg.Destination.add(mapAddressToMachine(address,
@@ -1197,6 +1194,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition({S, SM, SS, MS, OS, O, OM, MM, MM_W, M, M_W}, Load) {
     h_load_hit;
     uu_profileDataHit;
+    a_issueSFsetMru;
     k_popMandatoryQueue;
   }
 
@@ -1322,6 +1320,7 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition({MM, MM_W}, Store) {
     hh_store_hit;
     uu_profileDataHit;
+    a_issueSFsetMru;
     k_popMandatoryQueue;
   }
 
@@ -1393,30 +1392,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
     l_popForwardQueue;
   }
 
-  transition(S, Inv_sf_eci, I) {
-    forward_eviction_to_cpu;
-    kk_deallocateL1CacheBlock;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition({SI, II}, Inv_sf_eci, I) {
-    s_deallocateTBE;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition(SM, Inv_sf_eci, IM) {
-    forward_eviction_to_cpu;
-    g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
-  transition(I, Inv_sf_eci, I) {
-    //g_sendUnblockECI;
-    l_popForwardQueue;
-  }
-
   transition({SM}, Inv_sf_nd, IM) {
     forward_eviction_to_cpu;
     l_popForwardQueue;
@@ -1435,10 +1410,6 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   }
 
   transition(I, Inv_sf_nd) {
-    l_popForwardQueue;
-  }
-
-  transition(IS, Inv_sf_nd) {
     l_popForwardQueue;
   }
 
@@ -1470,12 +1441,14 @@ machine(MachineType:L1Cache, "L1 cache protocol")
   transition(M, Store, MM) {
     hh_store_hit;
     uu_profileDataHit;
+    a_issueSFsetMru;
     k_popMandatoryQueue;
   }
 
   transition(M_W, Store, MM_W) {
     hh_store_hit;
     uu_profileDataHit;
+    a_issueSFsetMru;
     k_popMandatoryQueue;
   }
 
